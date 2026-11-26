@@ -4,3 +4,4 @@
 #
 # The release workflow reads this file as it is on main and refuses a tag that none of these keys signed.
 # Empty, nobody can release. Changed only through a reviewed pull request (CODEOWNERS: .github/).
+georgi.tsonev@vaultody.com namespaces="git" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH2w/V9594Pnbme2NEwPp85uGBVtkM+SfMNGe5RBjI//
