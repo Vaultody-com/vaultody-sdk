@@ -58,7 +58,7 @@ version already on npm or PyPI is skipped, and the mirror's tag is left as it is
 | Release managers (their keys in `.github/release-signers`) | sign and push the tag |
 | Required reviewers of each environment | approve `npm-release`, `pypi-release`, `packagist-release`; never the person who started the run |
 | A registry owner (2FA) | the first npm publish of each package |
-| An organisation admin | the trusted publishers, the environments, the mirror and its deploy key |
+| An organisation admin | the trusted publishers, the environments, the mirror, and the GitHub App `vaultody-sdk-release` (Contents: write, installed on the mirror only) with its secrets `SDK_PHP_MIRROR_APP_ID` and `SDK_PHP_MIRROR_APP_PRIVATE_KEY` on `packagist-release` |
 
 ## What stops a release
 

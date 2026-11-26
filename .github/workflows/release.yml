@@ -22,15 +22,16 @@ name: release
 #   publish-pypi    environment pypi-release: vaultody-verify, then vaultody-sdk, by trusted publishing
 #                   (OIDC) with PEP 740 attestations; TestPyPI instead with what=testpypi.
 #   publish-php     environment packagist-release: php/ of the tag and the tag itself to the read-only
-#                   vaultody-sdk-php mirror (scripts/release/push-php-mirror.sh, the mirror's deploy key);
+#                   vaultody-sdk-php mirror (scripts/release/push-php-mirror.sh, a token of the GitHub App
+#                   vaultody-sdk-release, installed on the mirror only);
 #                   Packagist reads the tag from there.
 #   github-release  the release of the tag: notes from CHANGELOG.md, every package, SHA256SUMS and the
 #                   attestation bundle.
 #
 # Needs (set up by an organisation admin): a public repository; the environments npm-release,
 # pypi-release and packagist-release, each with required reviewers, self-review prevented and deployments
-# from v* tags only; the trusted publishers on npm and PyPI; the secret SDK_PHP_MIRROR_DEPLOY_KEY on
-# packagist-release; the release managers' SSH signing keys in .github/release-signers. Missing what it
+# from v* tags only; the trusted publishers on npm and PyPI; the secrets SDK_PHP_MIRROR_APP_ID and
+# SDK_PHP_MIRROR_APP_PRIVATE_KEY on packagist-release; the release managers' SSH signing keys in .github/release-signers. Missing what it
 # needs, a job stops before it publishes anything.
 #
 # A version already on npm or PyPI is skipped, and the mirror's tag is left alone when it holds the same
@@ -301,28 +302,39 @@ jobs:
         run: exit 1
       - name: Preflight
         env:
-          DEPLOY_KEY: ${{ secrets.SDK_PHP_MIRROR_DEPLOY_KEY }}
+          APP_ID: ${{ secrets.SDK_PHP_MIRROR_APP_ID }}
+          APP_KEY: ${{ secrets.SDK_PHP_MIRROR_APP_PRIVATE_KEY }}
         run: |
-          if [ -z "$DEPLOY_KEY" ]; then
-            echo "::error::The secret SDK_PHP_MIRROR_DEPLOY_KEY is not set on the packagist-release environment. Nothing was published."
+          missing=""
+          [ -n "$APP_ID" ] || missing="$missing SDK_PHP_MIRROR_APP_ID"
+          [ -n "$APP_KEY" ] || missing="$missing SDK_PHP_MIRROR_APP_PRIVATE_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::Not set on the packagist-release environment:$missing. Nothing was published."
             exit 1
           fi
       # php/ and the push script come from the tag the preflight checked, never from the build.
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
+      # Deploy keys are not allowed in the enterprise. The GitHub App vaultody-sdk-release is installed on the mirror
+      # only, with Contents: write only; its token lives for this job and is revoked when the job ends.
+      - name: A token for the mirror
+        id: mirror-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ secrets.SDK_PHP_MIRROR_APP_ID }}
+          private-key: ${{ secrets.SDK_PHP_MIRROR_APP_PRIVATE_KEY }}
+          owner: Vaultody-com
+          repositories: vaultody-sdk-php
+          permission-contents: write
       - name: php/ and the tag to the mirror
         env:
-          DEPLOY_KEY: ${{ secrets.SDK_PHP_MIRROR_DEPLOY_KEY }}
+          TOKEN: ${{ steps.mirror-token.outputs.token }}
           VERSION: ${{ needs.preflight.outputs.version }}
         run: |
-          key="$RUNNER_TEMP/mirror-deploy-key"
-          trap 'rm -f "$key"' EXIT
-          (umask 077 && printf '%s\n' "$DEPLOY_KEY" > "$key")
-          # GitHub's published SSH host key (api.github.com/meta), so the push goes to GitHub and nowhere else.
-          printf 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl\n' > "$RUNNER_TEMP/known_hosts"
-          export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$RUNNER_TEMP/known_hosts"
-          scripts/release/push-php-mirror.sh "$VERSION" "git@github.com:$SDK_PHP_MIRROR.git"
+          # HTTPS with the App's token in the URL of this one command: nothing goes to the git config or to disk,
+          # and the action masks the token in the log.
+          scripts/release/push-php-mirror.sh "$VERSION" "https://x-access-token:${TOKEN}@github.com/$SDK_PHP_MIRROR.git"
 
   github-release:
     needs: [preflight, attest, publish-npm, publish-pypi, publish-php]
