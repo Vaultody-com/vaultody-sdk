@@ -244,7 +244,7 @@ def test_a_signed_answer_without_any_root_fails_closed(kind, gateway):
             await api.request("GET", "/ping")
         return raised.value
 
-    assert run(kind, client, scenario).code == "no_roots"
+    assert run(kind, client, scenario).code == "no_root_keys"
 
 
 def test_an_unsigned_answer_needs_no_root(kind, clock):

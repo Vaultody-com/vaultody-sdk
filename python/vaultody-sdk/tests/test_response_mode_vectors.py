@@ -174,7 +174,7 @@ def test_answers(case, how):
         outcome, exchange, error = drive(how, verification(core, verify), store)
     except ConfigurationError as raised:
         assert expected["result"] == {"configurationError": True}
-        assert raised.code == "no_roots"
+        assert raised.code == "no_root_keys"
     else:
         if isinstance(expected["result"], dict):
             assert exchange is None and isinstance(error, ResponseVerificationError)
@@ -236,7 +236,7 @@ def test_a_release_candidate_turns_strict_on_the_first_signed_answer_it_can_not_
         return no_roots, latch, stripped
 
     no_roots, latch, stripped = run(kind, client, scenario)
-    assert no_roots.code == "no_roots"
+    assert no_roots.code == "no_root_keys"
     assert latch == {"latchedAt": int(clock()), "rootId": None}
     assert stripped.reason == "missing"
     assert [event["type"] for event in events] == ["response_signature_latched", "response_verification_failed"]

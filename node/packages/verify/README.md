@@ -176,7 +176,7 @@ signs the challenge the dashboard shows when you register a key (`signChallengeP
 (below). It does no network I/O.
 
 The `vaultody keys` command line (`generate`, `fingerprint`, `prove`, `verify`) is built on it and ships with
-[`@vaultody-com/sdk`](../sdk/README.md#command-line-request-signing-keys): `npx @vaultody-com/sdk keys ...`. Its
+[`@vaultody-com/sdk`](../sdk/README.md#command-line-request-signing-keys): `npx @vaultody-com/sdk@next keys ...`. Its
 `keys verify` asks the API through the SDK's client.
 
 ## Signing requests

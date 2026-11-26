@@ -28,8 +28,8 @@ for await (const vault of vaultody.vaults.listVaults({ networkType: 'main' })) {
 In an ES module, `import { Vaultody, fileSigner } from '@vaultody-com/sdk'`: every export (the client, every error class,
 the stores, the signers, the webhook helpers) is also a named ESM export.
 
-The package also ships the `vaultody` command line for request-signing keys (`npx @vaultody-com/sdk keys ...`) and for
-re-pinning a vault (`npx @vaultody-com/sdk vault-keys accept ...`)
+The package also ships the `vaultody` command line for request-signing keys (`npx @vaultody-com/sdk@next keys ...`) and for
+re-pinning a vault (`npx @vaultody-com/sdk@next vault-keys accept ...`)
 ([below](#request-signing-keys)).
 
 ## API methods
@@ -168,7 +168,7 @@ The rules are the same in every language ([`test-vectors/response-mode-v1.json`]
   - `onSecurityEvent({ type: 'vault_key_changed', origin, alarms })` is called first.
   - Then `VaultKeyChangedError` is thrown. The pin is not touched and nothing is returned.
   - Alarms carry short hashes (the first 16 hex characters of the SHA-256 of each xpub), never an xpub.
-  - Nothing re-pins by itself. When the change is legitimate (confirm it with Vaultody first), re-pin the vault: `npx @vaultody-com/sdk vault-keys accept --vault-id <vaultId>` shows the pinned and the new fingerprints and replaces the pin with `--yes --expect <fingerprints>` (below), or call `store.replace()` on a custom store. A configured pin is changed in your configuration.
+  - Nothing re-pins by itself. When the change is legitimate (confirm it with Vaultody first), re-pin the vault: `npx @vaultody-com/sdk@next vault-keys accept --vault-id <vaultId>` shows the pinned and the new fingerprints and replaces the pin with `--yes --expect <fingerprints>` (below), or call `store.replace()` on a custom store. A configured pin is changed in your configuration.
 - **Per-vault results.** Every `listVaults` page has `meta.vaultKeys`: one `{ vaultId, status, outcome }` per vault, in answer order. `status` is the vault's pin after the answer (`verified`, `unverified`) or `not_verifiable` (no MPC keys); `outcome` is `pinned`, `unchanged`, `upgraded` or `not_verifiable`. Python (`meta.vault_keys`) and PHP (`meta->vaultKeys`) report the same.
 - **Which addresses are checked.** On `generateDepositAddress`, `listAddressesByVaultAccountId` and `addAssetToVaultAccount`.
   - An address with its path (`accountIndex`, `isChange`, `addressIndex`) must derive from the pinned xpub (`@vaultody-com/verify/address`). Otherwise the whole answer is refused with `AddressVerificationError`.
@@ -261,7 +261,8 @@ The API secret, passphrase and API key never appear in `util.inspect`, JSON or a
 An API key can hold up to two public keys of your own. Once it holds one, every request made with it must also be
 signed with the matching private key (`x-api-keypair-sign`). The `vaultody keys` command makes those keys, prints
 their fingerprint, signs the challenge the dashboard shows when you register a key, and checks that a key is
-registered. It ships with this package: `npx @vaultody-com/sdk keys ...` (always the scoped name: an unscoped
+registered. It ships with this package: `npx @vaultody-com/sdk@next keys ...` (`@next` while the SDK is a release
+candidate: a bare `npx @vaultody-com/sdk` takes npm's `latest` tag; always the scoped name: an unscoped
 `npx vaultody` would run whatever is published under that name). From a checkout, `node bin/vaultody.js keys ...`
 in this directory does the same.
 
@@ -306,7 +307,7 @@ The SDKs refuse a vault whose xpub changed, that gained a key, or whose type cha
 you re-pin it. Confirm the change with Vaultody first, then:
 
 ```
-npx @vaultody-com/sdk vault-keys accept --vault-id <vaultId> [--file vault-keys.json] [--root <url>] [--key private.pem]
+npx @vaultody-com/sdk@next vault-keys accept --vault-id <vaultId> [--file vault-keys.json] [--root <url>] [--key private.pem]
                                    [--yes --expect type=<main|test>,ECDSA=<fingerprint|->,EDDSA=<fingerprint|->]
 ```
 

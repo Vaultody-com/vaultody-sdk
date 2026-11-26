@@ -14,12 +14,14 @@ embeds it.
 
 - The SDKs for Node.js (`@vaultody-com/sdk`, `@vaultody-com/verify`), Python (`vaultody-sdk`, `vaultody-verify`) and
   PHP (`vaultody/sdk`), for API version `2026-03-20`, under the Apache License 2.0.
-- The `vaultody keys` command line ships with `@vaultody-com/sdk` (`npx @vaultody-com/sdk keys ...`); `keys verify` asks
+- `ConfigurationError` for a signed response with no root key to check it carries the code `no_root_keys` in
+  Node.js, Python and PHP (Python said `no_roots`, PHP had no code).
+- The `vaultody keys` command line ships with `@vaultody-com/sdk` (`npx @vaultody-com/sdk@next keys ...`); `keys verify` asks
   through the SDK's client.
 - Pins given in configuration (`pinnedVaultKeys`, Python `pinned_vault_keys`) count as verified and are checked
   against every vault list like any pin; PHP has the option too now.
 - A key added to a pinned vault, or a vault type change, stays refused until the client re-pins the vault:
-  `npx @vaultody-com/sdk vault-keys accept --vault-id <vaultId>` shows the old and new fingerprints, and
+  `npx @vaultody-com/sdk@next vault-keys accept --vault-id <vaultId>` shows the old and new fingerprints, and
   `--yes --expect type=…,ECDSA=…,EDDSA=…` re-pins only when the API still shows exactly those.
 - A client with response-signing roots (the `roots` option, or a stable release that embeds the root) refuses an
   unsigned response from its first call; `when-present` is then ignored with a warning. Any response that carries a
