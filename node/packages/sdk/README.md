@@ -4,7 +4,7 @@ The official Vaultody SDK for Node.js. Node.js 22+, built-in `fetch` and `node:c
 this repository.
 
 **This version has the transport and a method for every documented operation** of API version
-`2026-03-20`: 32 methods in the groups of the API reference (below). Not published to npm yet.
+`2026-03-20`: 32 methods in the groups of the API reference (below). Release candidate: `npm install @vaultody/sdk@next`.
 
 ```js
 const { Vaultody, fileSigner } = require('@vaultody/sdk');
@@ -262,8 +262,8 @@ An API key can hold up to two public keys of your own. Once it holds one, every 
 signed with the matching private key (`x-api-keypair-sign`). The `vaultody keys` command makes those keys, prints
 their fingerprint, signs the challenge the dashboard shows when you register a key, and checks that a key is
 registered. It ships with this package: `npx @vaultody/sdk keys ...` (always the scoped name: an unscoped
-`npx vaultody` would run whatever is published under that name). Not published yet: from a checkout, run
-`node bin/vaultody.js keys ...` in this directory.
+`npx vaultody` would run whatever is published under that name). From a checkout, `node bin/vaultody.js keys ...`
+in this directory does the same.
 
 | Command | What it does |
 |---|---|

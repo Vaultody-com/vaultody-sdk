@@ -251,4 +251,5 @@ and signs its answers with the TEST-ONLY keys of the vectors. Each method's test
 request example and reads the documented answer and error examples of `contract/openapi.json`. Without
 composer, `src/autoload.php` stands in for composer's autoloader.
 
-Not published. Packagist will read a read-only mirror of this directory (`vaultody-sdk-php`).
+Packagist reads a read-only mirror of this directory (`vaultody-sdk-php`). Release candidate:
+`composer require "vaultody/sdk:^0.9@RC"`.

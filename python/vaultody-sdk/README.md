@@ -3,7 +3,7 @@
 The official Vaultody SDK for Python, imported as `vaultody_sdk`. Python 3.10+. Dependencies:
 `vaultody-verify` (same version), `httpx`, `cryptography`.
 
-Not published to PyPI yet (`Private :: Do Not Upload` until the first release).
+Release candidate: `pip install --pre vaultody-sdk`.
 
 ```python
 from vaultody_sdk import Vaultody, FileSigner

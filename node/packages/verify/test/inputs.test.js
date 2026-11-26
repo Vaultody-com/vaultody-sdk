@@ -212,9 +212,9 @@ describe('package entry points', () => {
         assert.throws(() => require('@vaultody/verify/src/roots.js'), { code: 'ERR_PACKAGE_PATH_NOT_EXPORTED' });
     });
 
-    it('is private and has no runtime dependencies', () => {
+    it('is publishable and has no runtime dependencies', () => {
         const manifest = require('@vaultody/verify/package.json');
-        assert.equal(manifest.private, true);
+        assert.equal(manifest.private, undefined);
         assert.equal(manifest.dependencies, undefined);
         assert.equal(manifest.engines.node, '>=22');
     });

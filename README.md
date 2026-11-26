@@ -9,7 +9,9 @@ against the vault xpub), the pieces every client is built from (typed errors, re
 request target, network error classification, the vault xpub pin model), the shared vectors that pin them,
 and the check that every documented API operation has a method. The clients (`Vaultody` in Node.js and PHP,
 `Vaultody` and `AsyncVaultody` in Python) sign, verify, pin vault xpubs, check addresses, retry and page.
-Nothing is published to npm, PyPI or Packagist yet.
+The first release candidate is `0.9.0-rc.1`: `npm install @vaultody/sdk@next`, `pip install --pre vaultody-sdk`,
+`composer require "vaultody/sdk:^0.9@RC"`. Until the production root key is embedded, a release candidate accepts
+unsigned responses and marks vault pins unverified (trust on first use); see [docs/RELEASING.md](docs/RELEASING.md).
 
 The API methods: one per documented operation of API version `2026-03-20` (32: the 31 published and
 `listApiKeySigningKeys`, still pending in the docs), grouped and named as the API reference groups and names

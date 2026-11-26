@@ -208,13 +208,29 @@ describe('scripts/release/guard.mjs: packages and stable releases', () => {
     const MANIFESTS = ['node/packages/verify/package.json', 'node/packages/sdk/package.json', 'python/vaultody-verify/pyproject.toml',
         'python/vaultody-sdk/pyproject.toml', 'php/composer.json', 'CHANGELOG.md', 'contract/pending'];
 
-    it('refuses to publish what the repository has today: private packages, no release notes; the licence is in place', () => {
-        const problems = checkPackages(ROOT, { version: '0.9.0-rc.1', repository: 'Vaultody-com/vaultody-sdk' });
-        for (const expected of ['node/packages/sdk/package.json: still "private": true', 'python/vaultody-sdk/pyproject.toml: still "Private :: Do Not Upload"',
-            'CHANGELOG.md has no "## 0.9.0-rc.1" section (the release notes)']) {
-            assert.ok(problems.includes(expected), expected);
+    it('passes the repository as it is for its own VERSION, and refuses a version without release notes', () => {
+        const repository = 'Vaultody-com/vaultody-sdk';
+        const version = readFileSync(path.join(ROOT, 'VERSION'), 'utf8').trim();
+        assert.deepEqual(checkPackages(ROOT, { version, repository }), []);
+        assert.ok(checkPackages(ROOT, { version: '9.9.9-rc.1', repository })
+            .includes('CHANGELOG.md has no "## 9.9.9-rc.1" section (the release notes)'));
+    });
+
+    it('refuses a package marked private again', () => {
+        const dir = copyOf(MANIFESTS);
+        try {
+            const npm = path.join(dir, 'node/packages/sdk/package.json');
+            writeFileSync(npm, JSON.stringify({ ...JSON.parse(readFileSync(npm, 'utf8')), private: true }, null, 2) + '\n');
+            const pypi = path.join(dir, 'python/vaultody-sdk/pyproject.toml');
+            writeFileSync(pypi, readFileSync(pypi, 'utf8').replace('classifiers = [', 'classifiers = [\n    "Private :: Do Not Upload",'));
+            const problems = checkPackages(dir, { version: '0.9.0-rc.1' });
+            for (const expected of ['node/packages/sdk/package.json: still "private": true',
+                'python/vaultody-sdk/pyproject.toml: still "Private :: Do Not Upload"']) {
+                assert.ok(problems.includes(expected), expected);
+            }
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
         }
-        assert.deepEqual(problems.filter(problem => /licen[cs]e/i.test(problem)), []);
     });
 
     it('refuses a repository without its LICENSE, or a package whose copy is missing', () => {

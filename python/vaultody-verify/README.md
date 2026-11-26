@@ -11,7 +11,8 @@ it answers. This package checks both signatures against roots it has pinned.
 Python 3.10+. The only dependency is `cryptography`; `requests` support is an optional extra.
 
 ```bash
-pip install './python/vaultody-verify[requests]'      # from a checkout; the package is not on PyPI
+pip install --pre 'vaultody-verify[requests]'          # the release candidate from PyPI
+pip install './python/vaultody-verify[requests]'      # from a checkout
 ```
 
 ## Usage with `requests`

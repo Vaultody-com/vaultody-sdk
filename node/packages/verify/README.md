@@ -11,10 +11,10 @@ Node.js 22 or later. No dependencies.
 
 ## Install
 
-Not published yet. Once released:
+Release candidate:
 
 ```sh
-npm install @vaultody/verify
+npm install @vaultody/verify@next
 ```
 
 ## Usage with fetch

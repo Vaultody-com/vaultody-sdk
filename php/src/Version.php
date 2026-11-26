@@ -16,5 +16,5 @@ final class Version
 {
     public const API_VERSION = '2026-03-20';
 
-    public const SDK_VERSION = '0.1.0';
+    public const SDK_VERSION = '0.9.0-rc.1';
 }

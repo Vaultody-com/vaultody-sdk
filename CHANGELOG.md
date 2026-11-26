@@ -6,8 +6,14 @@ GitHub release ([docs/RELEASING.md](docs/RELEASING.md)).
 
 ## Unreleased
 
+## 0.9.0-rc.1
+
+The first release candidate. The production root key is not embedded yet: responses without a signature are
+accepted (`when-present`) and vault pins are marked unverified (trust on first use) until a release candidate
+embeds it.
+
 - The SDKs for Node.js (`@vaultody/sdk`, `@vaultody/verify`), Python (`vaultody-sdk`, `vaultody-verify`) and
-  PHP (`vaultody/sdk`), for API version `2026-03-20`, under the Apache License 2.0. Not published yet.
+  PHP (`vaultody/sdk`), for API version `2026-03-20`, under the Apache License 2.0.
 - The `vaultody keys` command line ships with `@vaultody/sdk` (`npx @vaultody/sdk keys ...`); `keys verify` asks
   through the SDK's client.
 - Pins given in configuration (`pinnedVaultKeys`, Python `pinned_vault_keys`) count as verified and are checked
