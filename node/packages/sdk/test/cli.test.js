@@ -207,7 +207,7 @@ describe('vaultody: exit codes and messages', () => {
         { args: [], code: 2, stderr: /Usage: vaultody keys <command>/ },
         { args: ['--help'], code: 0, stdout: /Usage: vaultody keys <command>/ },
         { args: ['keys', '--help'], code: 0, stdout: /Exit codes: 0 ok, 1 refused or not registered, 2 usage error, 3 network or unexpected error/ },
-        { args: ['--version'], code: 0, stdout: /^\d+\.\d+\.\d+\n$/ },
+        { args: ['--version'], code: 0, stdout: /^\d+\.\d+\.\d+(-rc\.\d+)?\n$/ },
         { args: ['keys'], code: 2, stderr: /expected "keys <command>"/ },
         { args: ['key', 'generate'], code: 2, stderr: /expected "keys <command>"/ },
         { args: ['keys', 'sign'], code: 2, stderr: /unknown command/ },
