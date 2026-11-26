@@ -3,7 +3,7 @@
 #
 #   scripts/release/pack.sh <out>
 #
-#   <out>/npm/vaultody-verify-<v>.tgz, vaultody-sdk-<v>.tgz         npm pack: @vaultody/verify, @vaultody/sdk
+#   <out>/npm/vaultody-com-verify-<v>.tgz, vaultody-com-sdk-<v>.tgz         npm pack: @vaultody-com/verify, @vaultody-com/sdk
 #   <out>/pypi/vaultody-verify/, <out>/pypi/vaultody-sdk/           python -m build (wheel and sdist), twine check
 #   <out>/packagist/vaultody-sdk-<v>.zip                            composer validate, composer archive of php/
 #
@@ -51,7 +51,7 @@ tracked() {
     git ls-files -z -- "$1" | tar --null -T - -cf - | tar -xf - -C "${WORK}/src"
 }
 
-echo "== npm: @vaultody/verify, @vaultody/sdk ${VERSION}"
+echo "== npm: @vaultody-com/verify, @vaultody-com/sdk ${VERSION}"
 (cd node && npm pack --workspaces --ignore-scripts --loglevel=warn --no-update-notifier --pack-destination "${OUT}/npm" > /dev/null)
 
 echo "== PyPI: vaultody-verify, vaultody-sdk $(node scripts/version.mjs print --pep440)"

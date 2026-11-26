@@ -29,7 +29,7 @@
 
 const crypto = require('node:crypto');
 
-const { readSigningKey, readSigningKeyFile, p1363ToDer, ALGORITHMS, SigningKeyError, SignatureFormatError } = require('@vaultody/verify/keys');
+const { readSigningKey, readSigningKeyFile, p1363ToDer, ALGORITHMS, SigningKeyError, SignatureFormatError } = require('@vaultody-com/verify/keys');
 const { ConfigurationError } = require('./errors');
 
 const P1363_BYTES = 64;

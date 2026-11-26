@@ -1,6 +1,6 @@
 'use strict';
 
-// The `vaultody keys` command line (bin/vaultody.js, shipped with @vaultody/sdk), run as a separate process the
+// The `vaultody keys` command line (bin/vaultody.js, shipped with @vaultody-com/sdk), run as a separate process the
 // way a customer runs it: generate →
 // fingerprint → prove, the files it writes, the challenge format it accepts, its exit codes, and that it
 // never prints key material. When OpenSSL 3 or later is on PATH, the openssl commands the dashboard shows
@@ -14,7 +14,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { after, describe, it } = require('node:test');
 
-const keys = require('@vaultody/verify/keys');
+const keys = require('@vaultody-com/verify/keys');
 
 const CHALLENGE_VECTORS = require('../../../../test-vectors/keypair-challenge-v1.json');
 
@@ -362,12 +362,12 @@ describe(`the dashboard's openssl commands (${OPENSSL || 'skipped'})`, { skip: O
     }
 });
 
-describe('the vaultody command ships with @vaultody/sdk', () => {
-    it('is the package\'s bin (npx @vaultody/sdk keys ...), and @vaultody/verify declares none', () => {
+describe('the vaultody command ships with @vaultody-com/sdk', () => {
+    it('is the package\'s bin (npx @vaultody-com/sdk keys ...), and @vaultody-com/verify declares none', () => {
         const manifest = require('../package.json');
         assert.deepEqual(manifest.bin, { vaultody: './bin/vaultody.js' });
         assert.ok(manifest.files.includes('bin/'));
         assert.match(fs.readFileSync(BIN, 'utf8'), /^#!\/usr\/bin\/env node\n/);
-        assert.equal(require('@vaultody/verify/package.json').bin, undefined);
+        assert.equal(require('@vaultody-com/verify/package.json').bin, undefined);
     });
 });

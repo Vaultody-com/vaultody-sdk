@@ -12,7 +12,7 @@
  *                              [--response-root-key <root.pem>] [--allow-unsigned]
  *                              [--yes --expect type=<main|test>,ECDSA=<fingerprint|->,EDDSA=<fingerprint|->]
  *
- * It ships with @vaultody/sdk (`npx @vaultody/sdk keys ...`). The key formats are @vaultody/verify's
+ * It ships with @vaultody-com/sdk (`npx @vaultody-com/sdk keys ...`). The key formats are @vaultody-com/verify's
  * (keys.js); `keys verify` asks the API through the SDK's own client (listApiKeySigningKeys), so its request is
  * signed, and its response verified, exactly as every SDK call. This file reads the arguments, prints and picks
  * the exit code. It never prints a private key, the API secret, the passphrase or the API key, and reads the
@@ -22,8 +22,8 @@
 const fs = require('node:fs');
 const util = require('node:util');
 
-const keys = require('@vaultody/verify/keys');
-const { parseRoots, embeddedFingerprints, ConfigurationError: RootKeyError } = require('@vaultody/verify/response');
+const keys = require('@vaultody-com/verify/keys');
+const { parseRoots, embeddedFingerprints, ConfigurationError: RootKeyError } = require('@vaultody-com/verify/response');
 const { Vaultody } = require('../src/client');
 const { MODES, carriesSignature } = require('../src/responseVerification');
 const { MemoryVaultKeyStore, FileVaultKeyStore, defaultVaultKeysFile } = require('../src/vaultKeyStore');

@@ -7,7 +7,7 @@ const path = require('node:path');
 const { readFileSync } = require('node:fs');
 const { describe, it } = require('node:test');
 
-const sdk = require('@vaultody/sdk');
+const sdk = require('@vaultody-com/sdk');
 const { clientMethods, describeSurface } = require('../src/surface');
 
 const ROOT = path.resolve(__dirname, '..', '..', '..', '..');
@@ -21,7 +21,7 @@ describe('surface', () => {
 
     it('carries the one version number of the repository', () => {
         assert.equal(sdk.SDK_VERSION, readFileSync(path.join(ROOT, 'VERSION'), 'utf8').trim());
-        assert.equal(require('@vaultody/verify/package.json').version, sdk.SDK_VERSION);
+        assert.equal(require('@vaultody-com/verify/package.json').version, sdk.SDK_VERSION);
     });
 
     it('describes a client by walking it: only methods bound to an operation count', () => {

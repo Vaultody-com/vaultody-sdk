@@ -195,7 +195,7 @@ and the client's methods (found by reflection, `bin/surface.php`) against `contr
   Python. Security events have exactly the fields of `SecurityEvents::EVENTS`, the same in every language
   ([`../docs/vault-keys-file.md`](../docs/vault-keys-file.md)). A vault that gains an algorithm (`xpub_added`) or
   changes type (`type_changed`) is refused the same way, on purpose. A pin is never replaced automatically: after
-  you confirm the change out of band, re-pin the vault with `npx @vaultody/sdk vault-keys accept --vault-id <id> --yes`
+  you confirm the change out of band, re-pin the vault with `npx @vaultody-com/sdk vault-keys accept --vault-id <id> --yes`
   (the Node command line, which edits the shared pin file; it shows the old and new fingerprints first) or
   `VaultKeys\Pins::replace()` on your store, which records why in the store's audit list.
 - **Takes pins from configuration** too: `pinnedVaultKeys`, a list of

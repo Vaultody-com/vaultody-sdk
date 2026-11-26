@@ -9,7 +9,7 @@ against the vault xpub), the pieces every client is built from (typed errors, re
 request target, network error classification, the vault xpub pin model), the shared vectors that pin them,
 and the check that every documented API operation has a method. The clients (`Vaultody` in Node.js and PHP,
 `Vaultody` and `AsyncVaultody` in Python) sign, verify, pin vault xpubs, check addresses, retry and page.
-The first release candidate is `0.9.0-rc.1`: `npm install @vaultody/sdk@next`, `pip install --pre vaultody-sdk`,
+The first release candidate is `0.9.0-rc.1`: `npm install @vaultody-com/sdk@next`, `pip install --pre vaultody-sdk`,
 `composer require "vaultody/sdk:^0.9@RC"`. Until the production root key is embedded, a release candidate accepts
 unsigned responses and marks vault pins unverified (trust on first use); see [docs/RELEASING.md](docs/RELEASING.md).
 
@@ -36,8 +36,8 @@ request and paging calls are internal.
 
 | Directory | Package | Runtime | What |
 |---|---|---|---|
-| [`node/packages/verify/`](node/packages/verify/README.md) | `@vaultody/verify` | Node.js 22+, no dependencies | Verification only, no network or storage: signed responses, request signing (HMAC v2 and key pairs), P1363 → DER, webhook signatures, addresses against the vault xpub, request-signing key pairs and the signing-keys answer |
-| [`node/packages/sdk/`](node/packages/sdk/README.md) | `@vaultody/sdk` | Node.js 22+, depends on `@vaultody/verify` | The SDK: the client, its transport, a method for each of the 32 documented operations, and the `vaultody` command line: `npx @vaultody/sdk keys ...` for request-signing keys, `npx @vaultody/sdk vault-keys accept` to re-pin a vault in the shared pin file (Python and PHP users run it with npx too) |
+| [`node/packages/verify/`](node/packages/verify/README.md) | `@vaultody-com/verify` | Node.js 22+, no dependencies | Verification only, no network or storage: signed responses, request signing (HMAC v2 and key pairs), P1363 → DER, webhook signatures, addresses against the vault xpub, request-signing key pairs and the signing-keys answer |
+| [`node/packages/sdk/`](node/packages/sdk/README.md) | `@vaultody-com/sdk` | Node.js 22+, depends on `@vaultody-com/verify` | The SDK: the client, its transport, a method for each of the 32 documented operations, and the `vaultody` command line: `npx @vaultody-com/sdk keys ...` for request-signing keys, `npx @vaultody-com/sdk vault-keys accept` to re-pin a vault in the shared pin file (Python and PHP users run it with npx too) |
 | [`python/vaultody-verify/`](python/vaultody-verify/README.md) | `vaultody-verify` (import `vaultody_verify`) | Python 3.10+, `cryptography` | The verification module, as in Node, with the address check against the vault xpub |
 | [`python/vaultody-sdk/`](python/vaultody-sdk/README.md) | `vaultody-sdk` (import `vaultody_sdk`) | Python 3.10+, `vaultody-verify`, `httpx` | The SDK: `Vaultody` and `AsyncVaultody` over one core without I/O, each with a method for each of the 32 documented operations |
 | [`php/`](php/README.md) | `vaultody/sdk` (namespace `Vaultody\Sdk\`, verification in `Vaultody\Sdk\Verify\`) | PHP 8.2+, built-in extensions only (curl, json, openssl, sodium) | The verification module (with the address check against the vault xpub), the transport, and a method for each of the 32 documented operations |
@@ -52,7 +52,7 @@ One version number for every package: [`VERSION`](VERSION), set with `node scrip
 (Python writes a release candidate the PEP 440 way, `0.9.0rc1`). Releases: [`docs/RELEASING.md`](docs/RELEASING.md).
 Every SDK pins the API version it is written
 for (`x-api-version: 2026-03-20`, `info.version` of `contract/openapi.json`) in one constant: Node
-`API_VERSION` (`@vaultody/sdk`), Python `vaultody_sdk.API_VERSION`, PHP `Vaultody\Sdk\Version::API_VERSION`.
+`API_VERSION` (`@vaultody-com/sdk`), Python `vaultody_sdk.API_VERSION`, PHP `Vaultody\Sdk\Version::API_VERSION`.
 
 ## One behaviour in every language
 
@@ -82,7 +82,7 @@ The SDKs share more than the vectors below ([`docs/vault-keys-file.md`](docs/vau
   difference is the alarm), is never written to the store and takes the place of the stored pin of its vault.
 - **Refused until re-pinned**: an xpub changed or gone, a key a pinned vault did not have, a vault type change
   (`VaultKeyChangedError`). The client confirms the change with Vaultody and re-pins the vault:
-  `npx @vaultody/sdk vault-keys accept --vault-id <vaultId>` shows the old and new fingerprints and replaces the pin
+  `npx @vaultody-com/sdk vault-keys accept --vault-id <vaultId>` shows the old and new fingerprints and replaces the pin
   with `--yes --expect <the fingerprints it showed>`.
 - **One nonce per write**: every retry of a write keeps its `x-api-nonce` and body (re-signed with a fresh
   timestamp, or resent as it was), so the gateway's idempotency per API key and nonce sees one

@@ -49,7 +49,7 @@ const tracked = dir => execFileSync('git', ['ls-files', '-z', '--', dir], { cwd:
 export function expectedPackages(version) {
     const pep = toPep440(version);
     const npm = (name, dir, extra) => ({
-        name: `@vaultody/${name}`, registry: 'npm', file: `npm/vaultody-${name}-${version}.tgz`, prefix: 'package/',
+        name: `@vaultody-com/${name}`, registry: 'npm', file: `npm/vaultody-com-${name}-${version}.tgz`, prefix: 'package/',
         allowed: new RegExp(`^(package\\.json|README\\.md|LICENSE|src/[\\w/.-]+\\.js${extra})$`),
         required: ['package.json', 'README.md'],
         sources: { inPackage: 'src/', inRepository: `${dir}/src` },
@@ -71,7 +71,7 @@ export function expectedPackages(version) {
 
     return [
         npm('verify', 'node/packages/verify', ''),
-        // the vaultody command line (npx @vaultody/sdk keys ...)
+        // the vaultody command line (npx @vaultody-com/sdk keys ...)
         npm('sdk', 'node/packages/sdk', '|bin/vaultody\\.js'),
         ...python('vaultody-verify', 'vaultody_verify'),
         ...python('vaultody-sdk', 'vaultody_sdk'),
@@ -200,8 +200,8 @@ function checkPackage(pkg, { archive, dir, version, secrets }) {
         if (manifest.version !== version) {
             problems.push(`package.json version is ${manifest.version}, not ${version}`);
         }
-        if (manifest.dependencies && '@vaultody/verify' in manifest.dependencies && manifest.dependencies['@vaultody/verify'] !== version) {
-            problems.push(`depends on @vaultody/verify ${manifest.dependencies['@vaultody/verify']}, not ${version}`);
+        if (manifest.dependencies && '@vaultody-com/verify' in manifest.dependencies && manifest.dependencies['@vaultody-com/verify'] !== version) {
+            problems.push(`depends on @vaultody-com/verify ${manifest.dependencies['@vaultody-com/verify']}, not ${version}`);
         }
         for (const target of [manifest.main, ...Object.values(manifest.exports || {}), ...Object.values(manifest.bin || {})].filter(Boolean)) {
             if (!has.has(path.posix.normalize(target))) {

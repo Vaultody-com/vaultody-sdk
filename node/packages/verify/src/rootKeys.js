@@ -143,7 +143,7 @@ function parseRoots(roots) {
 function requireRoots(parsed) {
     if (parsed === null) {
         if (EMBEDDED.length === 0) {
-            throw new ConfigurationError('no root keys are configured: this build of @vaultody/verify has no embedded '
+            throw new ConfigurationError('no root keys are configured: this build of @vaultody-com/verify has no embedded '
                 + 'production roots yet, so pass them in the `roots` option. Refusing to treat any response as verified.');
         }
 

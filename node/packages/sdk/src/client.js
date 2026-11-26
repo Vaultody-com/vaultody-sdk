@@ -9,8 +9,8 @@
 
 const util = require('node:util');
 
-const { decodeApiSecret, isApiVersion } = require('@vaultody/verify/keys');
-const { embeddedFingerprints, parseRoots } = require('@vaultody/verify/response');
+const { decodeApiSecret, isApiVersion } = require('@vaultody-com/verify/keys');
+const { embeddedFingerprints, parseRoots } = require('@vaultody-com/verify/response');
 const { API_VERSION, SDK_VERSION } = require('./version');
 const { operationById } = require('./operations');
 const { buildRequest } = require('./requestBuilder');

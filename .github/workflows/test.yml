@@ -106,7 +106,7 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
-      # The Node helper loads @vaultody/sdk, which needs @vaultody/verify linked (as in the node job).
+      # The Node helper loads @vaultody-com/sdk, which needs @vaultody-com/verify linked (as in the node job).
       - run: npm ci --ignore-scripts --no-audit --no-fund
         working-directory: node
       - name: Python with both packages; PHP as the runner image ships it
@@ -133,7 +133,7 @@ jobs:
         run: node --test scripts/coverage.test.mjs
       - name: Version and release guard tests
         run: node --test scripts/version.test.mjs scripts/release/guard.test.mjs
-      # The Node surface is read from a real client, which needs @vaultody/verify linked (as in the node job).
+      # The Node surface is read from a real client, which needs @vaultody-com/verify linked (as in the node job).
       - run: npm ci --ignore-scripts --no-audit --no-fund
         working-directory: node
       - name: Surface of each SDK

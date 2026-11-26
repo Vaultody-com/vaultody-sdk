@@ -128,7 +128,7 @@ class AddressVerificationError extends VaultodyError {
 
 /**
  * A response that failed its signature check, or that came without one where one is required. `reason` is
- * @vaultody/verify's: missing, invalid, expired, unknown_root, request_unbound, unsupported_version. Never
+ * @vaultody-com/verify's: missing, invalid, expired, unknown_root, request_unbound, unsupported_version. Never
  * retried, and nothing in the response was used. For a write, the request may still have been carried out.
  */
 class ResponseVerificationError extends VaultodyError {

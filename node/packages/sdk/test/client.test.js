@@ -172,12 +172,12 @@ describe('what the client exposes', () => {
             assert.equal(client[name], undefined, name);
             assert.ok(!(name in client), name);
         }
-        const pkg = require('@vaultody/sdk');
+        const pkg = require('@vaultody-com/sdk');
         for (const name of ['request', 'internal', 'lowLevelCalls']) {
             assert.equal(pkg[name], undefined, name);
         }
         // Internal modules are not reachable through the package name.
-        for (const subpath of ['@vaultody/sdk/src/internal', '@vaultody/sdk/src/internal.js', '@vaultody/sdk/src/client.js']) {
+        for (const subpath of ['@vaultody-com/sdk/src/internal', '@vaultody-com/sdk/src/internal.js', '@vaultody-com/sdk/src/client.js']) {
             assert.throws(() => require(subpath), error => error.code === 'ERR_PACKAGE_PATH_NOT_EXPORTED', subpath);
         }
         assert.throws(() => internal.request({}, 'listVaults'), TypeError);

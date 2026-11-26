@@ -173,7 +173,7 @@ that both clients drive. So both behave the same, by construction.
    algorithm added to a pinned vault and a vault type change raise `VaultKeyChangedError` (the alarm; the
    security hook first, no pin changed, nothing returned). The last two are refused on purpose too: after
    you confirm a legitimate change with Vaultody, re-pin the vault with
-   `npx @vaultody/sdk vault-keys accept --vault-id <id> --yes` (the Node command line, which edits the pin
+   `npx @vaultody-com/sdk vault-keys accept --vault-id <id> --yes` (the Node command line, which edits the pin
    file every SDK shares; it shows the old and new fingerprints first) or `store.replace()`. Nothing else
    changes a pin. Pins you give in `pinned_vault_keys` count as `verified`, are compared with every vault
    list (signed or not) like any pin, so any difference is the alarm, are never written to the store, and

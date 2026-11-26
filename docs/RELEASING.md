@@ -4,7 +4,7 @@ Every package is released together, at the one version in [`VERSION`](../VERSION
 
 | Registry | Package | How |
 |---|---|---|
-| npm | `@vaultody/verify`, then `@vaultody/sdk` | trusted publishing (OIDC) with provenance; dist-tag `next` for a release candidate |
+| npm | `@vaultody-com/verify`, then `@vaultody-com/sdk` | trusted publishing (OIDC) with provenance; dist-tag `next` for a release candidate |
 | PyPI | `vaultody-verify`, then `vaultody-sdk` | trusted publishing (OIDC) with PEP 740 attestations |
 | Packagist | `vaultody/sdk` | `php/` and the tag pushed to the read-only mirror `Vaultody-com/vaultody-sdk-php`; Packagist reads the tag |
 | GitHub | release `v<version>` | every package, `SHA256SUMS`, the build provenance attestation; notes from [`CHANGELOG.md`](../CHANGELOG.md) |
@@ -42,7 +42,7 @@ The workflow refuses a stable version while no production root is embedded ([ord
    ```
 
 4. **Approve** each environment when the run waits on it: `npm-release`, `pypi-release`, `packagist-release`.
-5. **Check:** `npm view @vaultody/sdk dist-tags`, `pip download --no-deps vaultody-sdk==0.9.0rc1`,
+5. **Check:** `npm view @vaultody-com/sdk dist-tags`, `pip download --no-deps vaultody-sdk==0.9.0rc1`,
    `composer show --all vaultody/sdk`, the GitHub release, and
    `gh attestation verify <a downloaded file> --repo Vaultody-com/vaultody-sdk`.
 
@@ -88,9 +88,9 @@ npm has no pending publisher: a package must exist before its trusted publisher 
 npm package:
 
 1. Run the workflow with what `build-only`. Download the run's `release` artifact, then
-   `sha256sum --check SHA256SUMS` and `gh attestation verify npm/vaultody-verify-0.9.0-rc.1.tgz --repo Vaultody-com/vaultody-sdk`.
+   `sha256sum --check SHA256SUMS` and `gh attestation verify npm/vaultody-com-verify-0.9.0-rc.1.tgz --repo Vaultody-com/vaultody-sdk`.
 2. A registry owner publishes both tarballs by hand, with 2FA:
-   `npm publish vaultody-verify-0.9.0-rc.1.tgz --access public --tag next`, then the same for `vaultody-sdk`.
+   `npm publish vaultody-com-verify-0.9.0-rc.1.tgz --access public --tag next`, then the same for `vaultody-com-sdk-0.9.0-rc.1.tgz`.
    These two versions have no provenance.
 3. An organisation admin adds the trusted publisher to each package and sets "Require 2FA and disallow tokens".
 4. Run the workflow again on the same tag with what `all`, the same day: npm skips the two versions when it

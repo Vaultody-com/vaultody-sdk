@@ -1,12 +1,12 @@
 'use strict';
 
 /**
- * @vaultody/sdk: the client, with a method for every documented API operation (vaultody.<group>.<operationId>),
+ * @vaultody-com/sdk: the client, with a method for every documented API operation (vaultody.<group>.<operationId>),
  * its transport (signing, response verification, vault xpub pins and address checks, retries, the rate
  * limiter, paging, webhooks), and the pieces it is built from.
  *
  * Every export is a plain name in the object literal below (no spread, no `a: b.c`): that is the form Node's
- * ESM loader reads a CommonJS module's names from, so `import { X } from '@vaultody/sdk'` works for each of
+ * ESM loader reads a CommonJS module's names from, so `import { X } from '@vaultody-com/sdk'` works for each of
  * them (test/package-exports.test.js).
  */
 

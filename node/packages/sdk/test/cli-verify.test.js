@@ -2,7 +2,7 @@
 
 // `vaultody keys verify` against a local stand-in for the API. The command asks through the SDK's client
 // (listApiKeySigningKeys), so this also holds the client's transport to the gateway's checks. The stand-in checks
-// the request the way the gateway does, written out here independently of the SDK and @vaultody/verify: the HMAC
+// the request the way the gateway does, written out here independently of the SDK and @vaultody-com/verify: the HMAC
 // v2 x-api-sign over the fields in the gateway's order, then x-api-keypair-id and x-api-keypair-sign against the
 // keys registered on the API key. It answers like GET /api-keys/current/signing-keys, signing the response when a
 // test asks it to.
@@ -16,9 +16,9 @@ const os = require('node:os');
 const path = require('node:path');
 const { after, before, beforeEach, describe, it } = require('node:test');
 
-const { embeddedFingerprints } = require('@vaultody/verify/response');
+const { embeddedFingerprints } = require('@vaultody-com/verify/response');
 const { main } = require('../bin/vaultody');
-// The response signer of @vaultody/verify's own tests (test-only keys of test-vectors/v1.json)
+// The response signer of @vaultody-com/verify's own tests (test-only keys of test-vectors/v1.json)
 const { rootPem, signFresh, FRESH_BASE } = require('../../verify/test/helpers');
 
 const REQUEST_VECTORS = require('../../../../test-vectors/request-keypair-v1.json');

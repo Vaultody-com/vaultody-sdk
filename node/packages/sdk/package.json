@@ -1,7 +1,7 @@
 {
-  "name": "@vaultody/sdk",
+  "name": "@vaultody-com/sdk",
   "version": "0.9.0-rc.1",
-  "description": "The official Vaultody SDK for Node.js: a method for every documented API operation, over a transport that signs, verifies responses, pins vault xpubs, checks addresses, retries and pages; webhook verification; and the vaultody command line for request-signing keys (npx @vaultody/sdk keys ...).",
+  "description": "The official Vaultody SDK for Node.js: a method for every documented API operation, over a transport that signs, verifies responses, pins vault xpubs, checks addresses, retries and pages; webhook verification; and the vaultody command line for request-signing keys (npx @vaultody-com/sdk keys ...).",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
@@ -27,7 +27,7 @@
     "node": ">=22"
   },
   "dependencies": {
-    "@vaultody/verify": "0.9.0-rc.1"
+    "@vaultody-com/verify": "0.9.0-rc.1"
   },
   "scripts": {
     "test": "node --test"

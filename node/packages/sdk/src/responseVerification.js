@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Whether to accept a response, decided before a byte of it is parsed (@vaultody/verify does the check).
+ * Whether to accept a response, decided before a byte of it is parsed (@vaultody-com/verify does the check).
  * test-vectors/response-mode-v1.json pins every rule here, the same in every language.
  *
  * The mode in force (readResponseSignatureConfig):
@@ -30,7 +30,7 @@
 
 const {
     verifyResponse, ResponseSignatureError, ConfigurationError: VerifyConfigurationError, RESPONSE_SIGN_HEADERS,
-} = require('@vaultody/verify/response');
+} = require('@vaultody-com/verify/response');
 const { ResponseVerificationError, ConfigurationError } = require('./errors');
 const { DEFAULT_RESPONSE_SIGNATURE } = require('./defaults');
 

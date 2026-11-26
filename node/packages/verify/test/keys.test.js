@@ -418,8 +418,8 @@ describe('signingKeysUrl', () => {
 
 describe('package entry points', () => {
     it('exports the key API from ./keys and the package root', () => {
-        const fromSubpath = require('@vaultody/verify/keys');
-        const root = require('@vaultody/verify');
+        const fromSubpath = require('@vaultody-com/verify/keys');
+        const root = require('@vaultody-com/verify');
         assert.equal(fromSubpath.readSigningKeysResponse, keys.readSigningKeysResponse);
         for (const name of ['readSigningKey', 'readSigningKeyFile', 'inspectPublicKey', 'generateSigningKeyPair', 'signChallengeProof',
             'verifyChallengeProof', 'signApiRequest', 'readSigningKeysResponse', 'SigningKeyError']) {
@@ -427,8 +427,8 @@ describe('package entry points', () => {
         }
     });
 
-    it('does no network I/O and declares no command: the vaultody command line ships with @vaultody/sdk', () => {
-        const manifest = require('@vaultody/verify/package.json');
+    it('does no network I/O and declares no command: the vaultody command line ships with @vaultody-com/sdk', () => {
+        const manifest = require('@vaultody-com/verify/package.json');
         assert.equal(manifest.bin, undefined);
         assert.ok(!manifest.files.includes('bin/'));
         assert.equal(keys.checkRegisteredKey, undefined);

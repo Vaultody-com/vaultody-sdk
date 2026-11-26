@@ -8,7 +8,7 @@ namespace Vaultody\Sdk\Exception;
  * A vault's xpub differs from the one pinned (stored or configured), a pinned one is gone, the vault gained an
  * algorithm, or its type changed. Nothing in the response was used and no pin was changed. Each alarm names the
  * vault, the algorithm and short hashes of both xpubs, never an xpub itself. Only an explicit re-pin, after an
- * out-of-band check with Vaultody, ends it: `npx @vaultody/sdk vault-keys accept` on the pin file,
+ * out-of-band check with Vaultody, ends it: `npx @vaultody-com/sdk vault-keys accept` on the pin file,
  * Pins::replace() on a store, or a new pinnedVaultKeys entry.
  */
 final class VaultKeyChangedError extends VaultodyError

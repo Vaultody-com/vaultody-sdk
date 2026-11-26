@@ -16,7 +16,7 @@ name: release
 #                   packages. No secret, no id-token.
 #   attest          SHA256SUMS and one build provenance attestation over every package. No checkout; it
 #                   runs nothing the build wrote.
-#   publish-npm     environment npm-release: @vaultody/verify, then @vaultody/sdk, by trusted publishing
+#   publish-npm     environment npm-release: @vaultody-com/verify, then @vaultody-com/sdk, by trusted publishing
 #                   (OIDC) with provenance; dist-tag next for a release candidate. No checkout, no install.
 #                   A version on npm already is skipped when npm holds the same tarball, and fails otherwise.
 #   publish-pypi    environment pypi-release: vaultody-verify, then vaultody-sdk, by trusted publishing
@@ -187,7 +187,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: npm-release
-      url: https://www.npmjs.com/package/@vaultody/sdk
+      url: https://www.npmjs.com/package/@vaultody-com/sdk
     permissions:
       contents: read
       # trusted publishing: npm exchanges the workflow's OIDC token for a one-time publish token, and
@@ -216,8 +216,8 @@ jobs:
       - name: The files the attestation names
         working-directory: release
         run: sha256sum --check --strict SHA256SUMS
-      # No checkout and no install: npm publishes the tarballs the build packed, @vaultody/verify first,
-      # because @vaultody/sdk depends on that exact version.
+      # No checkout and no install: npm publishes the tarballs the build packed, @vaultody-com/verify first,
+      # because @vaultody-com/sdk depends on that exact version.
       - name: Publish to npm, each version not on npm yet, with provenance
         env:
           VERSION: ${{ needs.preflight.outputs.version }}
@@ -226,24 +226,24 @@ jobs:
           set -eu
           # shellcheck disable=SC2016 # the node script is single-quoted on purpose
           for name in verify sdk; do
-            t="release/npm/vaultody-$name-$VERSION.tgz"
+            t="release/npm/vaultody-com-$name-$VERSION.tgz"
             tar -xOzf "$t" package/package.json | node -e '
               let s = ""; process.stdin.on("data", d => (s += d)).on("end", () => {
                 const p = JSON.parse(s);
-                if (p.name !== `@vaultody/${process.argv[1]}` || p.version !== process.argv[2] || p.private === true) {
+                if (p.name !== `@vaultody-com/${process.argv[1]}` || p.version !== process.argv[2] || p.private === true) {
                   console.error(`::error::${process.argv[1]}: ${p.name}@${p.version}${p.private === true ? " (private)" : ""} is not the package to publish`);
                   process.exit(1);
                 }
               });' "$name" "$VERSION"
             # A version on npm already (published by hand the first time, or by an earlier attempt) is
             # skipped, but only when npm holds exactly this tarball.
-            published="$(npm view "@vaultody/$name@$VERSION" dist.integrity 2>/dev/null || true)"
+            published="$(npm view "@vaultody-com/$name@$VERSION" dist.integrity 2>/dev/null || true)"
             if [ -z "$published" ]; then
               npm publish "$t" --access public --tag "$DIST_TAG" --provenance
             elif [ "$published" = "sha512-$(openssl dgst -sha512 -binary "$t" | base64 -w0)" ]; then
-              echo "@vaultody/$name@$VERSION is on npm already, with this tarball"
+              echo "@vaultody-com/$name@$VERSION is on npm already, with this tarball"
             else
-              echo "::error::npm has another tarball for @vaultody/$name@$VERSION than this build. Nothing more was published."
+              echo "::error::npm has another tarball for @vaultody-com/$name@$VERSION than this build. Nothing more was published."
               exit 1
             fi
           done

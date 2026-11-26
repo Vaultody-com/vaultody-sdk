@@ -132,7 +132,7 @@ function signDigest(privateKey, digest) {
         }
         const p1363 = Buffer.from(r.toString(16).padStart(64, '0') + s.toString(16).padStart(64, '0'), 'hex');
 
-        return require('@vaultody/verify/keys').p1363ToDer(p1363);
+        return require('@vaultody-com/verify/keys').p1363ToDer(p1363);
     }
 }
 

@@ -1,4 +1,4 @@
-# @vaultody/verify
+# @vaultody-com/verify
 
 Checks that a Vaultody API response came, unchanged, from the Vaultody API gateway.
 
@@ -14,13 +14,13 @@ Node.js 22 or later. No dependencies.
 Release candidate:
 
 ```sh
-npm install @vaultody/verify@next
+npm install @vaultody-com/verify@next
 ```
 
 ## Usage with fetch
 
 ```js
-const { verifyFetchResponse, ResponseSignatureError } = require('@vaultody/verify');
+const { verifyFetchResponse, ResponseSignatureError } = require('@vaultody-com/verify');
 
 const url = 'https://rest.vaultody.com/vaults/<vaultId>/bitcoin/mainnet/addresses?context=yes';
 const init = {
@@ -51,7 +51,7 @@ response bytes. The `Response` body has already been read at this point, so use 
 ## Usage with any other HTTP client
 
 ```js
-const { verifyResponse } = require('@vaultody/verify');
+const { verifyResponse } = require('@vaultody-com/verify');
 
 const result = verifyResponse({
     request: { method: 'POST', url: '/vaults/<vaultId>/bitcoin/mainnet/addresses?context=yes', body: requestBytes, apiSign, keypairSign },
@@ -170,13 +170,13 @@ your HTTP client actually put on the wire, not the string you built.
 ## Request-signing keys
 
 An API key can hold up to two public keys of your own. Once it holds one, every request made with it must
-also be signed with the matching private key (`x-api-keypair-sign`). `require('@vaultody/verify/keys')` makes
+also be signed with the matching private key (`x-api-keypair-sign`). `require('@vaultody-com/verify/keys')` makes
 and reads those keys (`generateSigningKeyPair`, `readSigningKeyFile`, `inspectPublicKey`, `fingerprintOf`),
 signs the challenge the dashboard shows when you register a key (`signChallengeProof`), and signs requests
 (below). It does no network I/O.
 
 The `vaultody keys` command line (`generate`, `fingerprint`, `prove`, `verify`) is built on it and ships with
-[`@vaultody/sdk`](../sdk/README.md#command-line-request-signing-keys): `npx @vaultody/sdk keys ...`. Its
+[`@vaultody-com/sdk`](../sdk/README.md#command-line-request-signing-keys): `npx @vaultody-com/sdk keys ...`. Its
 `keys verify` asks the API through the SDK's client.
 
 ## Signing requests
@@ -199,7 +199,7 @@ does, in time linear in its length.
 ## Webhook deliveries
 
 ```js
-const { verifyWebhookSignature, WebhookSignatureError } = require('@vaultody/verify/webhook');
+const { verifyWebhookSignature, WebhookSignatureError } = require('@vaultody-com/verify/webhook');
 
 app.post('/webhook', express.raw({ type: 'application/json' }), (req, res) => {
     try {
@@ -228,7 +228,7 @@ place).
 ## Vault addresses
 
 ```js
-const { checkAddress, networkOfVault, AddressVerificationError } = require('@vaultody/verify/address');
+const { checkAddress, networkOfVault, AddressVerificationError } = require('@vaultody-com/verify/address');
 
 const vault = { type: 'main', keys: { ECDSA: ecdsaXpub, EDDSA: eddsaXpub } };   // pinned from GET /vaults/main
 checkAddress(vault, { blockchain: 'bitcoin', network: networkOfVault('bitcoin', 'main'), address,
@@ -238,7 +238,7 @@ checkAddress(vault, { blockchain: 'bitcoin', network: networkOfVault('bitcoin', 
 `checkAddress` derives the address from the vault's xpub at `m/accountIndex/isChange/addressIndex` (BIP32 public
 derivation for secp256k1, Vaultody's own scheme for ed25519; 17 chains) and throws `AddressVerificationError`
 (`reason`: `unsupported`, `network_mismatch`, `not_verifiable`, `missing_key` or `mismatch`) unless it is exactly
-the address given. Where the xpub comes from is the caller's trust decision: `@vaultody/sdk` takes it only from
+the address given. Where the xpub comes from is the caller's trust decision: `@vaultody-com/sdk` takes it only from
 `GET /vaults/{main|test}` and pins it on first sight. `networkOfVault` gives the network of an address whose
 response omits it (`test-vectors/address-v1.json`).
 
@@ -252,4 +252,4 @@ The tests run every case in `../../../test-vectors/v1.json`, `request-keypair-v1
 `keypair-challenge-v1.json`, `request-hmac-v2.json`, `request-full-v1.json`, `signing-keys-v1.json`,
 `p1363-der-v1.json` and `webhook-v1.json`, the vectors shared with the gateway and the other languages,
 and each case must produce exactly its expected result. `test/package-exports.test.js` imports every export
-with `require()` and with ESM `import`. The `vaultody` command line is tested in `@vaultody/sdk`.
+with `require()` and with ESM `import`. The `vaultody` command line is tested in `@vaultody-com/sdk`.
