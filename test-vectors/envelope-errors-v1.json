@@ -1,0 +1,1784 @@
+{
+  "format": "vaultody response envelope and typed errors, v1",
+  "source": {
+    "generator": "test-vectors/tools/generate-sdk-vectors.js",
+    "catalogue": "contract/errors.json"
+  },
+  "hierarchy": {
+    "VaultodyError": "the base of every error the SDK raises on purpose",
+    "ApiError": "VaultodyError; an answer the SDK can't return as a result: status, code, message, details, requestId, apiVersion, replayed, retryable",
+    "AuthenticationError": "ApiError",
+    "RequestSigningError": "ApiError",
+    "PermissionDeniedError": "ApiError",
+    "NotFoundError": "ApiError",
+    "InvalidRequestError": "ApiError",
+    "ConflictError": "ApiError",
+    "DuplicateTransferError": "ApiError",
+    "RateLimitError": "ApiError",
+    "ServerError": "ApiError"
+  },
+  "rules": {
+    "success": "A 2xx JSON object with data.item is an item; with data.items an array, a page: offset-paged when data has offset or total, else cursor-paged. Unknown fields are ignored. Anything else on a 2xx is an ApiError without a code.",
+    "error": "Any other status is an error. code is error.code when it is a string, else null; message likewise; requestId and apiVersion from the top level when strings, else null; details passed on as given (only when present).",
+    "class": "The class of the code (RequestSigningError for the key-pair and nonce codes, api_nonce_reused included, AuthenticationError for the four documented 401 codes, InvalidRequestError for the 409 validation codes, DuplicateTransferError for double_spending), else the class of the status: 400, 415, 422 InvalidRequestError; 401 AuthenticationError; 403 PermissionDeniedError; 404 NotFoundError; 409 ConflictError; 429 RateLimitError; 5xx ServerError; anything else ApiError.",
+    "replayed": "x-api-replayed exactly \"true\" (header name in any case)",
+    "retryable": "true only for address_derivation_conflict and vault_accounts_creation_failed, which the docs say to retry at once",
+    "branchOnCode": "Callers branch on code, never on message."
+  },
+  "caseFormat": {
+    "status": "HTTP status",
+    "headers": "response headers",
+    "body": "the raw body as text",
+    "expected": "{ kind: item|page, ... } or { kind: error, class, code, message, requestId, apiVersion, replayed, retryable, details? }"
+  },
+  "cases": [
+    {
+      "name": "item",
+      "description": "A single item: { apiVersion, requestId, context, data: { item } }.",
+      "status": 201,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1b1\",\"context\":\"order-1842\",\"data\":{\"item\":{\"address\":\"bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq\",\"label\":\"deposit-7\"}}}",
+      "expected": {
+        "kind": "item",
+        "apiVersion": "2026-03-20",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1b1",
+        "context": "order-1842",
+        "replayed": false
+      }
+    },
+    {
+      "name": "item_without_context",
+      "description": "No context sent: context is null.",
+      "status": 200,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1b2\",\"data\":{\"item\":{\"isValid\":true}}}",
+      "expected": {
+        "kind": "item",
+        "apiVersion": "2026-03-20",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1b2",
+        "context": null,
+        "replayed": false
+      }
+    },
+    {
+      "name": "item_replayed",
+      "description": "The first answer to a request sent again: x-api-replayed: true.",
+      "status": 201,
+      "headers": {
+        "x-api-replayed": "true"
+      },
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1b1\",\"context\":\"order-1842\",\"data\":{\"item\":{\"address\":\"bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq\",\"label\":\"deposit-7\"}}}",
+      "expected": {
+        "kind": "item",
+        "apiVersion": "2026-03-20",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1b1",
+        "context": "order-1842",
+        "replayed": true
+      }
+    },
+    {
+      "name": "item_replayed_header_case",
+      "description": "Header names match case-insensitively.",
+      "status": 201,
+      "headers": {
+        "X-Api-Replayed": "true"
+      },
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1b1\",\"context\":\"order-1842\",\"data\":{\"item\":{\"address\":\"bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq\",\"label\":\"deposit-7\"}}}",
+      "expected": {
+        "kind": "item",
+        "apiVersion": "2026-03-20",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1b1",
+        "context": "order-1842",
+        "replayed": true
+      }
+    },
+    {
+      "name": "item_replayed_other_value",
+      "description": "Only the exact value \"true\" means replayed.",
+      "status": 201,
+      "headers": {
+        "x-api-replayed": "yes"
+      },
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1b1\",\"context\":\"order-1842\",\"data\":{\"item\":{\"address\":\"bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq\",\"label\":\"deposit-7\"}}}",
+      "expected": {
+        "kind": "item",
+        "apiVersion": "2026-03-20",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1b1",
+        "context": "order-1842",
+        "replayed": false
+      }
+    },
+    {
+      "name": "item_unknown_fields_kept",
+      "description": "Fields the SDK does not know (added by a later API change) are no error.",
+      "status": 200,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1b3\",\"newTopLevel\":1,\"data\":{\"item\":{\"id\":\"x\",\"newField\":{\"a\":1}}}}",
+      "expected": {
+        "kind": "item",
+        "apiVersion": "2026-03-20",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1b3",
+        "context": null,
+        "replayed": false
+      }
+    },
+    {
+      "name": "cursor_page",
+      "description": "A cursor page: { limit, startingAfter, hasMore, items }.",
+      "status": 200,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1c1\",\"data\":{\"limit\":2,\"startingAfter\":\"6630f1c2a9e4b5d7c8e9f0a2\",\"hasMore\":true,\"items\":[{\"id\":\"6630f1c2a9e4b5d7c8e9f0a1\"},{\"id\":\"6630f1c2a9e4b5d7c8e9f0a2\"}]}}",
+      "expected": {
+        "kind": "page",
+        "paging": "cursor",
+        "apiVersion": "2026-03-20",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1c1",
+        "context": null,
+        "replayed": false,
+        "limit": 2,
+        "hasMore": true,
+        "startingAfter": "6630f1c2a9e4b5d7c8e9f0a2",
+        "count": 2
+      }
+    },
+    {
+      "name": "cursor_page_last",
+      "description": "The last page: hasMore false, no startingAfter.",
+      "status": 200,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1c2\",\"data\":{\"limit\":50,\"hasMore\":false,\"items\":[]}}",
+      "expected": {
+        "kind": "page",
+        "paging": "cursor",
+        "apiVersion": "2026-03-20",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1c2",
+        "context": null,
+        "replayed": false,
+        "limit": 50,
+        "hasMore": false,
+        "startingAfter": null,
+        "count": 0
+      }
+    },
+    {
+      "name": "offset_page",
+      "description": "An offset page: { limit, offset, total, items } (listApiKeySigningKeys).",
+      "status": 200,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1c3\",\"data\":{\"limit\":2,\"offset\":0,\"total\":1,\"items\":[{\"fingerprint\":\"SHA256:1K9sRW4V/tM+To9K/9728DyV3Qg2kE7x/9UELb/Nixg\"}]}}",
+      "expected": {
+        "kind": "page",
+        "paging": "offset",
+        "apiVersion": "2026-03-20",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1c3",
+        "context": null,
+        "replayed": false,
+        "limit": 2,
+        "offset": 0,
+        "total": 1,
+        "count": 1
+      }
+    },
+    {
+      "name": "code_invalid_asset_for_method",
+      "description": "400 invalid_asset_for_method.",
+      "status": 400,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"invalid_asset_for_method\",\"message\":\"TEST message for invalid_asset_for_method.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "InvalidRequestError",
+        "code": "invalid_asset_for_method",
+        "message": "TEST message for invalid_asset_for_method.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_invalid_blockchain",
+      "description": "400 invalid_blockchain.",
+      "status": 400,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"invalid_blockchain\",\"message\":\"TEST message for invalid_blockchain.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "InvalidRequestError",
+        "code": "invalid_blockchain",
+        "message": "TEST message for invalid_blockchain.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_invalid_blockchain_for_endpoint",
+      "description": "400 invalid_blockchain_for_endpoint.",
+      "status": 400,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"invalid_blockchain_for_endpoint\",\"message\":\"TEST message for invalid_blockchain_for_endpoint.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "InvalidRequestError",
+        "code": "invalid_blockchain_for_endpoint",
+        "message": "TEST message for invalid_blockchain_for_endpoint.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_invalid_network",
+      "description": "400 invalid_network.",
+      "status": 400,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"invalid_network\",\"message\":\"TEST message for invalid_network.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "InvalidRequestError",
+        "code": "invalid_network",
+        "message": "TEST message for invalid_network.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_invalid_pagination",
+      "description": "400 invalid_pagination.",
+      "status": 400,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"invalid_pagination\",\"message\":\"TEST message for invalid_pagination.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "InvalidRequestError",
+        "code": "invalid_pagination",
+        "message": "TEST message for invalid_pagination.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_limit_greater_than_allowed",
+      "description": "400 limit_greater_than_allowed.",
+      "status": 400,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"limit_greater_than_allowed\",\"message\":\"TEST message for limit_greater_than_allowed.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "InvalidRequestError",
+        "code": "limit_greater_than_allowed",
+        "message": "TEST message for limit_greater_than_allowed.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_duplicate_api_request",
+      "description": "401 duplicate_api_request (the gateway's own); a 401 body has no apiVersion.",
+      "status": 401,
+      "headers": {},
+      "body": "{\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"duplicate_api_request\",\"message\":\"TEST message for duplicate_api_request.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "AuthenticationError",
+        "code": "duplicate_api_request",
+        "message": "TEST message for duplicate_api_request.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": null,
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_invalid_api_key",
+      "description": "401 invalid_api_key; a 401 body has no apiVersion.",
+      "status": 401,
+      "headers": {},
+      "body": "{\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"invalid_api_key\",\"message\":\"TEST message for invalid_api_key.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "AuthenticationError",
+        "code": "invalid_api_key",
+        "message": "TEST message for invalid_api_key.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": null,
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_invalid_api_keypair_sign",
+      "description": "401 invalid_api_keypair_sign (the gateway's own); a 401 body has no apiVersion.",
+      "status": 401,
+      "headers": {},
+      "body": "{\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"invalid_api_keypair_sign\",\"message\":\"TEST message for invalid_api_keypair_sign.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "RequestSigningError",
+        "code": "invalid_api_keypair_sign",
+        "message": "TEST message for invalid_api_keypair_sign.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": null,
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_invalid_api_sign",
+      "description": "401 invalid_api_sign; a 401 body has no apiVersion.",
+      "status": 401,
+      "headers": {},
+      "body": "{\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"invalid_api_sign\",\"message\":\"TEST message for invalid_api_sign.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "AuthenticationError",
+        "code": "invalid_api_sign",
+        "message": "TEST message for invalid_api_sign.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": null,
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_invalid_api_timestamp",
+      "description": "401 invalid_api_timestamp; a 401 body has no apiVersion.",
+      "status": 401,
+      "headers": {},
+      "body": "{\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"invalid_api_timestamp\",\"message\":\"TEST message for invalid_api_timestamp.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "AuthenticationError",
+        "code": "invalid_api_timestamp",
+        "message": "TEST message for invalid_api_timestamp.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": null,
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_missing_api_keypair_sign",
+      "description": "401 missing_api_keypair_sign (the gateway's own); a 401 body has no apiVersion.",
+      "status": 401,
+      "headers": {},
+      "body": "{\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"missing_api_keypair_sign\",\"message\":\"TEST message for missing_api_keypair_sign.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "RequestSigningError",
+        "code": "missing_api_keypair_sign",
+        "message": "TEST message for missing_api_keypair_sign.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": null,
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_missing_api_nonce",
+      "description": "401 missing_api_nonce (the gateway's own); a 401 body has no apiVersion.",
+      "status": 401,
+      "headers": {},
+      "body": "{\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"missing_api_nonce\",\"message\":\"TEST message for missing_api_nonce.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "RequestSigningError",
+        "code": "missing_api_nonce",
+        "message": "TEST message for missing_api_nonce.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": null,
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_missing_authorization_header",
+      "description": "401 missing_authorization_header; a 401 body has no apiVersion.",
+      "status": 401,
+      "headers": {},
+      "body": "{\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"missing_authorization_header\",\"message\":\"TEST message for missing_authorization_header.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "AuthenticationError",
+        "code": "missing_authorization_header",
+        "message": "TEST message for missing_authorization_header.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": null,
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_unknown_api_keypair_id",
+      "description": "401 unknown_api_keypair_id (the gateway's own); a 401 body has no apiVersion.",
+      "status": 401,
+      "headers": {},
+      "body": "{\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"unknown_api_keypair_id\",\"message\":\"TEST message for unknown_api_keypair_id.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "RequestSigningError",
+        "code": "unknown_api_keypair_id",
+        "message": "TEST message for unknown_api_keypair_id.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": null,
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_api_key_not_allowed_for_wallet",
+      "description": "403 api_key_not_allowed_for_wallet.",
+      "status": 403,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"api_key_not_allowed_for_wallet\",\"message\":\"TEST message for api_key_not_allowed_for_wallet.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "PermissionDeniedError",
+        "code": "api_key_not_allowed_for_wallet",
+        "message": "TEST message for api_key_not_allowed_for_wallet.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_api_keypair_required",
+      "description": "403 api_keypair_required (the gateway's own).",
+      "status": 403,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"api_keypair_required\",\"message\":\"TEST message for api_keypair_required.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "RequestSigningError",
+        "code": "api_keypair_required",
+        "message": "TEST message for api_keypair_required.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_delegated_resources_locked",
+      "description": "403 delegated_resources_locked.",
+      "status": 403,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"delegated_resources_locked\",\"message\":\"TEST message for delegated_resources_locked.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "PermissionDeniedError",
+        "code": "delegated_resources_locked",
+        "message": "TEST message for delegated_resources_locked.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_endpoint_not_allowed_for_api_key",
+      "description": "403 endpoint_not_allowed_for_api_key.",
+      "status": 403,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"endpoint_not_allowed_for_api_key\",\"message\":\"TEST message for endpoint_not_allowed_for_api_key.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "PermissionDeniedError",
+        "code": "endpoint_not_allowed_for_api_key",
+        "message": "TEST message for endpoint_not_allowed_for_api_key.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_endpoint_not_allowed_for_plan",
+      "description": "403 endpoint_not_allowed_for_plan.",
+      "status": 403,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"endpoint_not_allowed_for_plan\",\"message\":\"TEST message for endpoint_not_allowed_for_plan.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "PermissionDeniedError",
+        "code": "endpoint_not_allowed_for_plan",
+        "message": "TEST message for endpoint_not_allowed_for_plan.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_feature_mainnets_not_allowed_for_plan",
+      "description": "403 feature_mainnets_not_allowed_for_plan.",
+      "status": 403,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"feature_mainnets_not_allowed_for_plan\",\"message\":\"TEST message for feature_mainnets_not_allowed_for_plan.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "PermissionDeniedError",
+        "code": "feature_mainnets_not_allowed_for_plan",
+        "message": "TEST message for feature_mainnets_not_allowed_for_plan.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_fee_payer_not_approved",
+      "description": "403 fee_payer_not_approved.",
+      "status": 403,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"fee_payer_not_approved\",\"message\":\"TEST message for fee_payer_not_approved.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "PermissionDeniedError",
+        "code": "fee_payer_not_approved",
+        "message": "TEST message for fee_payer_not_approved.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_insufficient_frozen_amount",
+      "description": "403 insufficient_frozen_amount.",
+      "status": 403,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"insufficient_frozen_amount\",\"message\":\"TEST message for insufficient_frozen_amount.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "PermissionDeniedError",
+        "code": "insufficient_frozen_amount",
+        "message": "TEST message for insufficient_frozen_amount.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_ip_address_not_whitelisted",
+      "description": "403 ip_address_not_whitelisted.",
+      "status": 403,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"ip_address_not_whitelisted\",\"message\":\"TEST message for ip_address_not_whitelisted.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "PermissionDeniedError",
+        "code": "ip_address_not_whitelisted",
+        "message": "TEST message for ip_address_not_whitelisted.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_mainnet_not_allowed_for_key",
+      "description": "403 mainnet_not_allowed_for_key.",
+      "status": 403,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"mainnet_not_allowed_for_key\",\"message\":\"TEST message for mainnet_not_allowed_for_key.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "PermissionDeniedError",
+        "code": "mainnet_not_allowed_for_key",
+        "message": "TEST message for mainnet_not_allowed_for_key.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_maximum_unfreeze_operations_reached",
+      "description": "403 maximum_unfreeze_operations_reached.",
+      "status": 403,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"maximum_unfreeze_operations_reached\",\"message\":\"TEST message for maximum_unfreeze_operations_reached.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "PermissionDeniedError",
+        "code": "maximum_unfreeze_operations_reached",
+        "message": "TEST message for maximum_unfreeze_operations_reached.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_no_withdrawable_balance",
+      "description": "403 no_withdrawable_balance.",
+      "status": 403,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"no_withdrawable_balance\",\"message\":\"TEST message for no_withdrawable_balance.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "PermissionDeniedError",
+        "code": "no_withdrawable_balance",
+        "message": "TEST message for no_withdrawable_balance.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_testnet_not_allowed_for_key",
+      "description": "403 testnet_not_allowed_for_key.",
+      "status": 403,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"testnet_not_allowed_for_key\",\"message\":\"TEST message for testnet_not_allowed_for_key.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "PermissionDeniedError",
+        "code": "testnet_not_allowed_for_key",
+        "message": "TEST message for testnet_not_allowed_for_key.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_vault_accounts_limit_reached",
+      "description": "403 vault_accounts_limit_reached.",
+      "status": 403,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"vault_accounts_limit_reached\",\"message\":\"TEST message for vault_accounts_limit_reached.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "PermissionDeniedError",
+        "code": "vault_accounts_limit_reached",
+        "message": "TEST message for vault_accounts_limit_reached.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_vault_accounts_not_allowed_for_vault_type",
+      "description": "403 vault_accounts_not_allowed_for_vault_type.",
+      "status": 403,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"vault_accounts_not_allowed_for_vault_type\",\"message\":\"TEST message for vault_accounts_not_allowed_for_vault_type.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "PermissionDeniedError",
+        "code": "vault_accounts_not_allowed_for_vault_type",
+        "message": "TEST message for vault_accounts_not_allowed_for_vault_type.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_vault_as_a_service_deposit_addresses_limit_reached",
+      "description": "403 vault_as_a_service_deposit_addresses_limit_reached.",
+      "status": 403,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"vault_as_a_service_deposit_addresses_limit_reached\",\"message\":\"TEST message for vault_as_a_service_deposit_addresses_limit_reached.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "PermissionDeniedError",
+        "code": "vault_as_a_service_deposit_addresses_limit_reached",
+        "message": "TEST message for vault_as_a_service_deposit_addresses_limit_reached.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_vault_as_a_service_provided_network_is_not_suitable_for_this_vault_type",
+      "description": "403 vault_as_a_service_provided_network_is_not_suitable_for_this_vault_type.",
+      "status": 403,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"vault_as_a_service_provided_network_is_not_suitable_for_this_vault_type\",\"message\":\"TEST message for vault_as_a_service_provided_network_is_not_suitable_for_this_vault_type.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "PermissionDeniedError",
+        "code": "vault_as_a_service_provided_network_is_not_suitable_for_this_vault_type",
+        "message": "TEST message for vault_as_a_service_provided_network_is_not_suitable_for_this_vault_type.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_vault_as_a_service_vault_recovery_not_initialized",
+      "description": "403 vault_as_a_service_vault_recovery_not_initialized.",
+      "status": 403,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"vault_as_a_service_vault_recovery_not_initialized\",\"message\":\"TEST message for vault_as_a_service_vault_recovery_not_initialized.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "PermissionDeniedError",
+        "code": "vault_as_a_service_vault_recovery_not_initialized",
+        "message": "TEST message for vault_as_a_service_vault_recovery_not_initialized.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_wallet_as_a_service_provided_network_is_not_suitable_for_this_wallet_type",
+      "description": "403 wallet_as_a_service_provided_network_is_not_suitable_for_this_wallet_type.",
+      "status": 403,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"wallet_as_a_service_provided_network_is_not_suitable_for_this_wallet_type\",\"message\":\"TEST message for wallet_as_a_service_provided_network_is_not_suitable_for_this_wallet_type.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "PermissionDeniedError",
+        "code": "wallet_as_a_service_provided_network_is_not_suitable_for_this_wallet_type",
+        "message": "TEST message for wallet_as_a_service_provided_network_is_not_suitable_for_this_wallet_type.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_resource_not_found",
+      "description": "404 resource_not_found.",
+      "status": 404,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"resource_not_found\",\"message\":\"TEST message for resource_not_found.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "NotFoundError",
+        "code": "resource_not_found",
+        "message": "TEST message for resource_not_found.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_address_derivation_conflict",
+      "description": "409 address_derivation_conflict.",
+      "status": 409,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"address_derivation_conflict\",\"message\":\"TEST message for address_derivation_conflict.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "ConflictError",
+        "code": "address_derivation_conflict",
+        "message": "TEST message for address_derivation_conflict.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": true
+      }
+    },
+    {
+      "name": "code_already_approved",
+      "description": "409 already_approved.",
+      "status": 409,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"already_approved\",\"message\":\"TEST message for already_approved.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "ConflictError",
+        "code": "already_approved",
+        "message": "TEST message for already_approved.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_api_nonce_reused",
+      "description": "409 api_nonce_reused (the gateway's own).",
+      "status": 409,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"api_nonce_reused\",\"message\":\"TEST message for api_nonce_reused.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "RequestSigningError",
+        "code": "api_nonce_reused",
+        "message": "TEST message for api_nonce_reused.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_double_spending",
+      "description": "409 double_spending.",
+      "status": 409,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"double_spending\",\"message\":\"TEST message for double_spending.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "DuplicateTransferError",
+        "code": "double_spending",
+        "message": "TEST message for double_spending.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_duplicate_api_request_in_progress",
+      "description": "409 duplicate_api_request_in_progress (the gateway's own).",
+      "status": 409,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"duplicate_api_request_in_progress\",\"message\":\"TEST message for duplicate_api_request_in_progress.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "ConflictError",
+        "code": "duplicate_api_request_in_progress",
+        "message": "TEST message for duplicate_api_request_in_progress.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_extra_body_attributes",
+      "description": "409 extra_body_attributes.",
+      "status": 409,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"extra_body_attributes\",\"message\":\"TEST message for extra_body_attributes.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "InvalidRequestError",
+        "code": "extra_body_attributes",
+        "message": "TEST message for extra_body_attributes.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_extra_query_attributes",
+      "description": "409 extra_query_attributes.",
+      "status": 409,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"extra_query_attributes\",\"message\":\"TEST message for extra_query_attributes.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "InvalidRequestError",
+        "code": "extra_query_attributes",
+        "message": "TEST message for extra_query_attributes.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_gross_amount_not_supported_with_fee_payer",
+      "description": "409 gross_amount_not_supported_with_fee_payer.",
+      "status": 409,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"gross_amount_not_supported_with_fee_payer\",\"message\":\"TEST message for gross_amount_not_supported_with_fee_payer.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "ConflictError",
+        "code": "gross_amount_not_supported_with_fee_payer",
+        "message": "TEST message for gross_amount_not_supported_with_fee_payer.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_gross_amount_only_supported_for_coins",
+      "description": "409 gross_amount_only_supported_for_coins.",
+      "status": 409,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"gross_amount_only_supported_for_coins\",\"message\":\"TEST message for gross_amount_only_supported_for_coins.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "ConflictError",
+        "code": "gross_amount_only_supported_for_coins",
+        "message": "TEST message for gross_amount_only_supported_for_coins.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_invalid_api_version",
+      "description": "409 invalid_api_version.",
+      "status": 409,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"invalid_api_version\",\"message\":\"TEST message for invalid_api_version.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "InvalidRequestError",
+        "code": "invalid_api_version",
+        "message": "TEST message for invalid_api_version.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_invalid_data",
+      "description": "409 invalid_data.",
+      "status": 409,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"invalid_data\",\"message\":\"TEST message for invalid_data.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "InvalidRequestError",
+        "code": "invalid_data",
+        "message": "TEST message for invalid_data.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_missing_required_attributes",
+      "description": "409 missing_required_attributes.",
+      "status": 409,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"missing_required_attributes\",\"message\":\"TEST message for missing_required_attributes.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "InvalidRequestError",
+        "code": "missing_required_attributes",
+        "message": "TEST message for missing_required_attributes.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_vault_accounts_creation_failed",
+      "description": "409 vault_accounts_creation_failed.",
+      "status": 409,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"vault_accounts_creation_failed\",\"message\":\"TEST message for vault_accounts_creation_failed.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "ConflictError",
+        "code": "vault_accounts_creation_failed",
+        "message": "TEST message for vault_accounts_creation_failed.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": true
+      }
+    },
+    {
+      "name": "code_wallet_as_a_service_address_balance_not_enough",
+      "description": "409 wallet_as_a_service_address_balance_not_enough.",
+      "status": 409,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"wallet_as_a_service_address_balance_not_enough\",\"message\":\"TEST message for wallet_as_a_service_address_balance_not_enough.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "ConflictError",
+        "code": "wallet_as_a_service_address_balance_not_enough",
+        "message": "TEST message for wallet_as_a_service_address_balance_not_enough.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_wallet_as_a_service_token_not_supported",
+      "description": "409 wallet_as_a_service_token_not_supported.",
+      "status": 409,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"wallet_as_a_service_token_not_supported\",\"message\":\"TEST message for wallet_as_a_service_token_not_supported.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "ConflictError",
+        "code": "wallet_as_a_service_token_not_supported",
+        "message": "TEST message for wallet_as_a_service_token_not_supported.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_wallet_as_a_service_wallet_balance_not_enough",
+      "description": "409 wallet_as_a_service_wallet_balance_not_enough.",
+      "status": 409,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"wallet_as_a_service_wallet_balance_not_enough\",\"message\":\"TEST message for wallet_as_a_service_wallet_balance_not_enough.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "ConflictError",
+        "code": "wallet_as_a_service_wallet_balance_not_enough",
+        "message": "TEST message for wallet_as_a_service_wallet_balance_not_enough.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_unsupported_media_type",
+      "description": "415 unsupported_media_type.",
+      "status": 415,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"unsupported_media_type\",\"message\":\"TEST message for unsupported_media_type.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "InvalidRequestError",
+        "code": "unsupported_media_type",
+        "message": "TEST message for unsupported_media_type.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_invalid_request_body_structure",
+      "description": "422 invalid_request_body_structure.",
+      "status": 422,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"invalid_request_body_structure\",\"message\":\"TEST message for invalid_request_body_structure.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "InvalidRequestError",
+        "code": "invalid_request_body_structure",
+        "message": "TEST message for invalid_request_body_structure.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_request_limit_reached",
+      "description": "429 request_limit_reached.",
+      "status": 429,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"request_limit_reached\",\"message\":\"TEST message for request_limit_reached.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "RateLimitError",
+        "code": "request_limit_reached",
+        "message": "TEST message for request_limit_reached.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_unexpected_server_error",
+      "description": "500 unexpected_server_error.",
+      "status": 500,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"unexpected_server_error\",\"message\":\"TEST message for unexpected_server_error.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "ServerError",
+        "code": "unexpected_server_error",
+        "message": "TEST message for unexpected_server_error.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "code_api_nonce_reused",
+      "description": "409 api_nonce_reused: the nonce was used before for a different request; RequestSigningError, not retryable.",
+      "status": 409,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"api_nonce_reused\",\"message\":\"TEST message for api_nonce_reused.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "RequestSigningError",
+        "code": "api_nonce_reused",
+        "message": "TEST message for api_nonce_reused.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "unknown_code_400",
+      "description": "An unknown code with 400: the class of the status, the code kept as it is.",
+      "status": 400,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"some_future_code_400\",\"message\":\"TEST message.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "InvalidRequestError",
+        "code": "some_future_code_400",
+        "message": "TEST message.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "unknown_code_401",
+      "description": "An unknown code with 401: the class of the status, the code kept as it is.",
+      "status": 401,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"some_future_code_401\",\"message\":\"TEST message.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "AuthenticationError",
+        "code": "some_future_code_401",
+        "message": "TEST message.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "unknown_code_403",
+      "description": "An unknown code with 403: the class of the status, the code kept as it is.",
+      "status": 403,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"some_future_code_403\",\"message\":\"TEST message.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "PermissionDeniedError",
+        "code": "some_future_code_403",
+        "message": "TEST message.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "unknown_code_404",
+      "description": "An unknown code with 404: the class of the status, the code kept as it is.",
+      "status": 404,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"some_future_code_404\",\"message\":\"TEST message.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "NotFoundError",
+        "code": "some_future_code_404",
+        "message": "TEST message.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "unknown_code_409",
+      "description": "An unknown code with 409: the class of the status, the code kept as it is.",
+      "status": 409,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"some_future_code_409\",\"message\":\"TEST message.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "ConflictError",
+        "code": "some_future_code_409",
+        "message": "TEST message.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "unknown_code_415",
+      "description": "An unknown code with 415: the class of the status, the code kept as it is.",
+      "status": 415,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"some_future_code_415\",\"message\":\"TEST message.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "InvalidRequestError",
+        "code": "some_future_code_415",
+        "message": "TEST message.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "unknown_code_422",
+      "description": "An unknown code with 422: the class of the status, the code kept as it is.",
+      "status": 422,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"some_future_code_422\",\"message\":\"TEST message.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "InvalidRequestError",
+        "code": "some_future_code_422",
+        "message": "TEST message.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "unknown_code_429",
+      "description": "An unknown code with 429: the class of the status, the code kept as it is.",
+      "status": 429,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"some_future_code_429\",\"message\":\"TEST message.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "RateLimitError",
+        "code": "some_future_code_429",
+        "message": "TEST message.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "unknown_code_500",
+      "description": "An unknown code with 500: the class of the status, the code kept as it is.",
+      "status": 500,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"some_future_code_500\",\"message\":\"TEST message.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "ServerError",
+        "code": "some_future_code_500",
+        "message": "TEST message.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "unknown_code_502",
+      "description": "An unknown code with 502: the class of the status, the code kept as it is.",
+      "status": 502,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"some_future_code_502\",\"message\":\"TEST message.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "ServerError",
+        "code": "some_future_code_502",
+        "message": "TEST message.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "unknown_code_503",
+      "description": "An unknown code with 503: the class of the status, the code kept as it is.",
+      "status": 503,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"some_future_code_503\",\"message\":\"TEST message.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "ServerError",
+        "code": "some_future_code_503",
+        "message": "TEST message.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "unknown_code_405",
+      "description": "An unknown code with 405: the class of the status, the code kept as it is.",
+      "status": 405,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"some_future_code_405\",\"message\":\"TEST message.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "ApiError",
+        "code": "some_future_code_405",
+        "message": "TEST message.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "unknown_code_413",
+      "description": "An unknown code with 413: the class of the status, the code kept as it is.",
+      "status": 413,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"some_future_code_413\",\"message\":\"TEST message.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "ApiError",
+        "code": "some_future_code_413",
+        "message": "TEST message.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "error_with_details",
+      "description": "error.details is passed on as it is.",
+      "status": 409,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"invalid_data\",\"message\":\"TEST message.\",\"details\":[{\"attribute\":\"amount\",\"message\":\"must be a string\"}]}}",
+      "expected": {
+        "kind": "error",
+        "class": "InvalidRequestError",
+        "code": "invalid_data",
+        "message": "TEST message.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "details": [
+          {
+            "attribute": "amount",
+            "message": "must be a string"
+          }
+        ],
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "error_replayed",
+      "description": "A replayed error answer is still that error, marked replayed.",
+      "status": 403,
+      "headers": {
+        "x-api-replayed": "true"
+      },
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a1\",\"error\":{\"code\":\"wallet_as_a_service_provided_network_is_not_suitable_for_this_wallet_type\",\"message\":\"TEST message.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "PermissionDeniedError",
+        "code": "wallet_as_a_service_provided_network_is_not_suitable_for_this_wallet_type",
+        "message": "TEST message.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a1",
+        "apiVersion": "2026-03-20",
+        "replayed": true,
+        "retryable": false
+      }
+    },
+    {
+      "name": "html_502",
+      "description": "A 502 from a proxy with an HTML body: the class of the status, no code.",
+      "status": 502,
+      "headers": {},
+      "body": "<html><body>Bad Gateway</body></html>",
+      "expected": {
+        "kind": "error",
+        "class": "ServerError",
+        "code": null,
+        "message": null,
+        "requestId": null,
+        "apiVersion": null,
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "empty_503",
+      "description": "A 503 with no body.",
+      "status": 503,
+      "headers": {},
+      "body": "",
+      "expected": {
+        "kind": "error",
+        "class": "ServerError",
+        "code": null,
+        "message": null,
+        "requestId": null,
+        "apiVersion": null,
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "json_without_error_object",
+      "description": "A 400 whose JSON has no error object.",
+      "status": 400,
+      "headers": {},
+      "body": "{\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a2\"}",
+      "expected": {
+        "kind": "error",
+        "class": "InvalidRequestError",
+        "code": null,
+        "message": null,
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a2",
+        "apiVersion": null,
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "error_code_not_a_string",
+      "description": "error.code that is not a string is no code.",
+      "status": 409,
+      "headers": {},
+      "body": "{\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a3\",\"error\":{\"code\":42,\"message\":\"TEST message.\"}}",
+      "expected": {
+        "kind": "error",
+        "class": "ConflictError",
+        "code": null,
+        "message": "TEST message.",
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a3",
+        "apiVersion": null,
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "success_not_json",
+      "description": "A 200 that is not JSON is not an answer the SDK can return: ApiError, no code.",
+      "status": 200,
+      "headers": {},
+      "body": "OK",
+      "expected": {
+        "kind": "error",
+        "class": "ApiError",
+        "code": null,
+        "message": null,
+        "requestId": null,
+        "apiVersion": null,
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "success_without_data",
+      "description": "A 200 JSON without data.item or data.items.",
+      "status": 200,
+      "headers": {},
+      "body": "{\"apiVersion\":\"2026-03-20\",\"requestId\":\"6630f1c2a9e4b5d7c8e9f1a4\",\"data\":{}}",
+      "expected": {
+        "kind": "error",
+        "class": "ApiError",
+        "code": null,
+        "message": null,
+        "requestId": "6630f1c2a9e4b5d7c8e9f1a4",
+        "apiVersion": "2026-03-20",
+        "replayed": false,
+        "retryable": false
+      }
+    },
+    {
+      "name": "success_json_array",
+      "description": "A 200 whose JSON is not an object.",
+      "status": 200,
+      "headers": {},
+      "body": "[]",
+      "expected": {
+        "kind": "error",
+        "class": "ApiError",
+        "code": null,
+        "message": null,
+        "requestId": null,
+        "apiVersion": null,
+        "replayed": false,
+        "retryable": false
+      }
+    }
+  ],
+  "sdkErrors": {
+    "rule": "Errors the SDK raises with no answer of the API. Each class extends VaultodyError and is exported where ApiError is: the Node package root, the vaultody_sdk package root, PHP's Vaultody\\Sdk\\Exception namespace. Each case raises one for real and names the class and the fields it must carry (Python names them in snake_case; these are one word). Nothing is sent: the params are checked before.",
+    "classes": [
+      "RequestOutcomeUnknownError",
+      "TransportError",
+      "ParameterError",
+      "PaginationError",
+      "VaultKeyChangedError",
+      "AddressVerificationError",
+      "ResponseVerificationError",
+      "ConfigurationError",
+      "WebhookSignatureError",
+      "WebhookPayloadError",
+      "VaultKeyStoreError"
+    ],
+    "caseFormat": {
+      "call": "a method of the client: its group, operationId (Python: snake_case) and params, as the application passes them",
+      "webhook": "webhooks.verify(raw body, headers, secrets)",
+      "expected": "{ class, fields }: the class raised and the value of each field named"
+    },
+    "cases": [
+      {
+        "name": "param_unknown",
+        "description": "A param the operation does not document: param names it.",
+        "call": {
+          "group": "transactions",
+          "operationId": "createMultipleTransfer",
+          "params": {
+            "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+            "assetId": "6630f1c2a9e4b5d7c8e9f0b7",
+            "feePriority": "standard",
+            "note": "TEST note",
+            "prepareStrategy": "minimize-dust",
+            "recipients": [
+              {
+                "address": "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed",
+                "amount": "0.1"
+              }
+            ],
+            "vaultAccountId": "6630f1c2a9e4b5d7c8e9f0e2",
+            "fooBar": "x"
+          }
+        },
+        "expected": {
+          "class": "ParameterError",
+          "fields": {
+            "code": "unknown_param",
+            "param": "fooBar"
+          }
+        }
+      },
+      {
+        "name": "param_missing",
+        "description": "A required param left out.",
+        "call": {
+          "group": "transactions",
+          "operationId": "createMultipleTransfer",
+          "params": {
+            "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+            "assetId": "6630f1c2a9e4b5d7c8e9f0b7",
+            "feePriority": "standard",
+            "prepareStrategy": "minimize-dust",
+            "recipients": [
+              {
+                "address": "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed",
+                "amount": "0.1"
+              }
+            ],
+            "vaultAccountId": "6630f1c2a9e4b5d7c8e9f0e2"
+          }
+        },
+        "expected": {
+          "class": "ParameterError",
+          "fields": {
+            "code": "missing_param",
+            "param": "note"
+          }
+        }
+      },
+      {
+        "name": "param_not_documented_value",
+        "description": "A value outside the documented list (case included).",
+        "call": {
+          "group": "transactions",
+          "operationId": "createMultipleTransfer",
+          "params": {
+            "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+            "assetId": "6630f1c2a9e4b5d7c8e9f0b7",
+            "feePriority": "FAST",
+            "note": "TEST note",
+            "prepareStrategy": "minimize-dust",
+            "recipients": [
+              {
+                "address": "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed",
+                "amount": "0.1"
+              }
+            ],
+            "vaultAccountId": "6630f1c2a9e4b5d7c8e9f0e2"
+          }
+        },
+        "expected": {
+          "class": "ParameterError",
+          "fields": {
+            "code": "invalid_param",
+            "param": "feePriority"
+          }
+        }
+      },
+      {
+        "name": "param_nested_wrong_type",
+        "description": "A nested field of the wrong type: param is its path.",
+        "call": {
+          "group": "transactions",
+          "operationId": "createMultipleTransfer",
+          "params": {
+            "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+            "assetId": "6630f1c2a9e4b5d7c8e9f0b7",
+            "feePriority": "standard",
+            "note": "TEST note",
+            "prepareStrategy": "minimize-dust",
+            "recipients": [
+              {
+                "address": "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed",
+                "amount": 5
+              }
+            ],
+            "vaultAccountId": "6630f1c2a9e4b5d7c8e9f0e2"
+          }
+        },
+        "expected": {
+          "class": "ParameterError",
+          "fields": {
+            "code": "invalid_param",
+            "param": "recipients[0].amount"
+          }
+        }
+      },
+      {
+        "name": "param_nested_unknown",
+        "description": "A nested field the API does not document.",
+        "call": {
+          "group": "transactions",
+          "operationId": "createMultipleTransfer",
+          "params": {
+            "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+            "assetId": "6630f1c2a9e4b5d7c8e9f0b7",
+            "feePriority": "standard",
+            "note": "TEST note",
+            "prepareStrategy": "minimize-dust",
+            "recipients": [
+              {
+                "address": "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed",
+                "amount": "0.1",
+                "memo": "x"
+              }
+            ],
+            "vaultAccountId": "6630f1c2a9e4b5d7c8e9f0e2"
+          }
+        },
+        "expected": {
+          "class": "ParameterError",
+          "fields": {
+            "code": "unknown_param",
+            "param": "recipients[0].memo"
+          }
+        }
+      },
+      {
+        "name": "param_nested_missing",
+        "description": "A required nested field left out.",
+        "call": {
+          "group": "transactions",
+          "operationId": "createMultipleTransfer",
+          "params": {
+            "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+            "assetId": "6630f1c2a9e4b5d7c8e9f0b7",
+            "feePriority": "standard",
+            "note": "TEST note",
+            "prepareStrategy": "minimize-dust",
+            "recipients": [
+              {
+                "address": "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed"
+              }
+            ],
+            "vaultAccountId": "6630f1c2a9e4b5d7c8e9f0e2"
+          }
+        },
+        "expected": {
+          "class": "ParameterError",
+          "fields": {
+            "code": "missing_param",
+            "param": "recipients[0].amount"
+          }
+        }
+      },
+      {
+        "name": "webhook_mismatch",
+        "description": "A delivery whose body changed after signing.",
+        "webhook": {
+          "bodyBase64": "eyJ3ZWJob29rSWQiOiI2ODUxNmU5YzY2MjBiMGE0NzkwZWQ1NDEiLCJkYXRhIjp7ImV2ZW50IjoiVFJBTlNBQ1RJT05fUkVRVUVTVCIsIml0ZW0iOnsicmVxdWVzdElkIjoiNjg2Y2QyODYwY2EyZjRmZDI1Zjc3MDk5In19fSA=",
+          "headers": {
+            "X-Signature": "ea0a8918a11a036aba5c7752f9f7534e0c01f5bcf61e4973f9ab549e787f4ac6"
+          },
+          "secrets": [
+            "TEST-ONLY webhook signing secret A"
+          ]
+        },
+        "expected": {
+          "class": "WebhookSignatureError",
+          "fields": {
+            "reason": "mismatch"
+          }
+        }
+      },
+      {
+        "name": "webhook_missing",
+        "description": "A delivery without X-Signature.",
+        "webhook": {
+          "bodyBase64": "eyJ3ZWJob29rSWQiOiI2ODUxNmU5YzY2MjBiMGE0NzkwZWQ1NDEiLCJkYXRhIjp7ImV2ZW50IjoiVFJBTlNBQ1RJT05fUkVRVUVTVCIsIml0ZW0iOnsicmVxdWVzdElkIjoiNjg2Y2QyODYwY2EyZjRmZDI1Zjc3MDk5In19fQ==",
+          "headers": {},
+          "secrets": [
+            "TEST-ONLY webhook signing secret A"
+          ]
+        },
+        "expected": {
+          "class": "WebhookSignatureError",
+          "fields": {
+            "reason": "missing"
+          }
+        }
+      },
+      {
+        "name": "webhook_not_json",
+        "description": "Signed, but not JSON.",
+        "webhook": {
+          "bodyBase64": "bm90IGpzb24=",
+          "headers": {
+            "X-Signature": "3fd756b1c29faa53a6114ecb602f381f3116278e66ea5a513ea0b595e30c45f0"
+          },
+          "secrets": [
+            "TEST-ONLY webhook signing secret A"
+          ]
+        },
+        "expected": {
+          "class": "WebhookPayloadError",
+          "fields": {}
+        }
+      },
+      {
+        "name": "webhook_no_event",
+        "description": "Signed JSON without data.event.",
+        "webhook": {
+          "bodyBase64": "eyJkYXRhIjp7fX0=",
+          "headers": {
+            "X-Signature": "63e09937b91c014461a8ce737ee9a2247691b4f5f597f16ff42b0a149c31bdc1"
+          },
+          "secrets": [
+            "TEST-ONLY webhook signing secret A"
+          ]
+        },
+        "expected": {
+          "class": "WebhookPayloadError",
+          "fields": {}
+        }
+      }
+    ]
+  }
+}

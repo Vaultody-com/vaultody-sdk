@@ -1,0 +1,335 @@
+{
+  "format": "vaultody signed answers of GET /api-keys/current/signing-keys, v1",
+  "warning": "TEST-ONLY KEYS AND SECRETS. Every secret and private key in this file is public. Never use them outside tests.",
+  "source": {
+    "generator": "test-vectors/tools/generate-gateway-vectors.js",
+    "gateway": {
+      "commit": "1a84dd507bb72153e2f2238fea9ac299935cc7fe"
+    },
+    "responses": "signed with the gateway's response-signing helpers, pod key 1 and the certificates of v1.json; every verdict checked with its reference verifier"
+  },
+  "rules": {
+    "order": "Verify the response first, over the request as sent (x-api-sign and x-api-keypair-sign included), with unsigned answers accepted (requireResponseSignature false). Only a response that passes is read.",
+    "outcome": "401 or 403: refused, with error.code. 200: data.items is the list; active when an item has our fingerprint and status \"active\", inactive when it has our fingerprint and another status, not_listed otherwise. Any other status or shape is an unexpected answer."
+  },
+  "caseFormat": {
+    "fingerprint": "the fingerprint of the key the client signed with",
+    "request": "the request as sent (as in v1.json)",
+    "response": "the response as received",
+    "now": "Unix seconds",
+    "expected": "signature: verified | absent | { error: reason }; outcome (and code) only when the signature check passed",
+    "roots": "the roots to pin are v1.json keys.roots current and next"
+  },
+  "pinnedRoots": [
+    "current",
+    "next"
+  ],
+  "cases": [
+    {
+      "name": "active",
+      "description": "The key that signed the request is listed and active.",
+      "fingerprint": "SHA256:1K9sRW4V/tM+To9K/9728DyV3Qg2kE7x/9UELb/Nixg",
+      "request": {
+        "method": "GET",
+        "path": "/api-keys/current/signing-keys",
+        "query": "",
+        "bodyBase64": "",
+        "apiSign": "iqzqE1+T6KeG11+W4GwOsx5+dymS9IHG4EqV8uZcnsQ=",
+        "keypairSign": "9c/ruMbWgkeMOR1D3ErIJ9IgbzVzZAN1D8aZMpl2kKLymDb4PWjRuKDDy5uRwgvjbv5l1FcuZrmbQRx+T8KUDg=="
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "x-api-response-sign": "5LSG8DDESFPWhzlO6ZJHKwQKLbPRHHZkSJ5YYnVqBUwqS5gQbf2phhwyYzmMtLy4czmUeN0A3DdnqJJe+/qPCQ==",
+          "x-api-response-timestamp": "1794201000",
+          "x-api-response-sign-version": "1",
+          "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+        },
+        "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBlMSIsImRhdGEiOnsibGltaXQiOjIsIm9mZnNldCI6MCwidG90YWwiOjEsIml0ZW1zIjpbeyJmaW5nZXJwcmludCI6IlNIQTI1NjoxSzlzUlc0Vi90TStUbzlLLzk3MjhEeVYzUWcya0U3eC85VUVMYi9OaXhnIiwiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInN0YXR1cyI6ImFjdGl2ZSIsImNyZWF0ZWRUaW1lc3RhbXAiOjE3OTUwMDAwMDAsImFwcHJvdmVkVGltZXN0YW1wIjoxNzk1MDAwMzAwfV19fQ=="
+      },
+      "now": 1794201002,
+      "expected": {
+        "signature": "verified",
+        "outcome": "active"
+      }
+    },
+    {
+      "name": "active_second_of_two",
+      "description": "Two keys during a rotation; ours is the second.",
+      "fingerprint": "SHA256:1K9sRW4V/tM+To9K/9728DyV3Qg2kE7x/9UELb/Nixg",
+      "request": {
+        "method": "GET",
+        "path": "/api-keys/current/signing-keys",
+        "query": "",
+        "bodyBase64": "",
+        "apiSign": "iqzqE1+T6KeG11+W4GwOsx5+dymS9IHG4EqV8uZcnsQ=",
+        "keypairSign": "9c/ruMbWgkeMOR1D3ErIJ9IgbzVzZAN1D8aZMpl2kKLymDb4PWjRuKDDy5uRwgvjbv5l1FcuZrmbQRx+T8KUDg=="
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "x-api-response-sign": "OJcQQiBxlDe4eSmTjlqOeD6kXudPzENGz/D2jRcHAHoIEKEhawuRjxmC59QRaUFOji3SnisLOCjl8umN/yH8BQ==",
+          "x-api-response-timestamp": "1794201000",
+          "x-api-response-sign-version": "1",
+          "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+        },
+        "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBlMSIsImRhdGEiOnsibGltaXQiOjIsIm9mZnNldCI6MCwidG90YWwiOjIsIml0ZW1zIjpbeyJmaW5nZXJwcmludCI6IlNIQTI1NjpTbFpDUmdqZWp1azgwMWF6ZkU0VElnclVIamtycm1VcW4rWGY0WU9kb0M0IiwiYWxnb3JpdGhtIjoicC0yNTYiLCJzdGF0dXMiOiJhY3RpdmUiLCJjcmVhdGVkVGltZXN0YW1wIjoxNzk1MDAwMDAwLCJhcHByb3ZlZFRpbWVzdGFtcCI6MTc5NTAwMDMwMH0seyJmaW5nZXJwcmludCI6IlNIQTI1NjoxSzlzUlc0Vi90TStUbzlLLzk3MjhEeVYzUWcya0U3eC85VUVMYi9OaXhnIiwiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInN0YXR1cyI6ImFjdGl2ZSIsImNyZWF0ZWRUaW1lc3RhbXAiOjE3OTUwMDAwMDAsImFwcHJvdmVkVGltZXN0YW1wIjoxNzk1MDAwMzAwfV19fQ=="
+      },
+      "now": 1794201002,
+      "expected": {
+        "signature": "verified",
+        "outcome": "active"
+      }
+    },
+    {
+      "name": "next_root",
+      "description": "The answer is certified by the next root (after a root rotation).",
+      "fingerprint": "SHA256:1K9sRW4V/tM+To9K/9728DyV3Qg2kE7x/9UELb/Nixg",
+      "request": {
+        "method": "GET",
+        "path": "/api-keys/current/signing-keys",
+        "query": "",
+        "bodyBase64": "",
+        "apiSign": "iqzqE1+T6KeG11+W4GwOsx5+dymS9IHG4EqV8uZcnsQ=",
+        "keypairSign": "9c/ruMbWgkeMOR1D3ErIJ9IgbzVzZAN1D8aZMpl2kKLymDb4PWjRuKDDy5uRwgvjbv5l1FcuZrmbQRx+T8KUDg=="
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "x-api-response-sign": "5LSG8DDESFPWhzlO6ZJHKwQKLbPRHHZkSJ5YYnVqBUwqS5gQbf2phhwyYzmMtLy4czmUeN0A3DdnqJJe+/qPCQ==",
+          "x-api-response-timestamp": "1794201000",
+          "x-api-response-sign-version": "1",
+          "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCjUxNjVhZTRlMGUyMTVkZDE3NzcwMDA5YTc3ZmRhZmZlYzJiNDRhNjg1ZjNjYjVjNGNiOWVlMDU5YjY2MzE1ODYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEYCIQDvvnfLIgvpZVJ9Pq3bqoZ9ymK9J/1f9MQh7fUbuJWZrgIhAIehJ+WNAblcrLIIYLooFpsZjJ0RIfaj7+jh9dGwqqKf"
+        },
+        "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBlMSIsImRhdGEiOnsibGltaXQiOjIsIm9mZnNldCI6MCwidG90YWwiOjEsIml0ZW1zIjpbeyJmaW5nZXJwcmludCI6IlNIQTI1NjoxSzlzUlc0Vi90TStUbzlLLzk3MjhEeVYzUWcya0U3eC85VUVMYi9OaXhnIiwiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInN0YXR1cyI6ImFjdGl2ZSIsImNyZWF0ZWRUaW1lc3RhbXAiOjE3OTUwMDAwMDAsImFwcHJvdmVkVGltZXN0YW1wIjoxNzk1MDAwMzAwfV19fQ=="
+      },
+      "now": 1794201002,
+      "expected": {
+        "signature": "verified",
+        "outcome": "active"
+      }
+    },
+    {
+      "name": "not_listed_empty",
+      "description": "The API key has no signing key.",
+      "fingerprint": "SHA256:1K9sRW4V/tM+To9K/9728DyV3Qg2kE7x/9UELb/Nixg",
+      "request": {
+        "method": "GET",
+        "path": "/api-keys/current/signing-keys",
+        "query": "",
+        "bodyBase64": "",
+        "apiSign": "iqzqE1+T6KeG11+W4GwOsx5+dymS9IHG4EqV8uZcnsQ=",
+        "keypairSign": "9c/ruMbWgkeMOR1D3ErIJ9IgbzVzZAN1D8aZMpl2kKLymDb4PWjRuKDDy5uRwgvjbv5l1FcuZrmbQRx+T8KUDg=="
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "x-api-response-sign": "QTSAtUgt+eUW+MImyj4FlF78iHs/dDciVJFm/1+lOq7Yimh4SnoqY6teYy136iit9epN6GU5esNRtcDFMf4/CA==",
+          "x-api-response-timestamp": "1794201000",
+          "x-api-response-sign-version": "1",
+          "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+        },
+        "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBlMSIsImRhdGEiOnsibGltaXQiOjIsIm9mZnNldCI6MCwidG90YWwiOjAsIml0ZW1zIjpbXX19"
+      },
+      "now": 1794201002,
+      "expected": {
+        "signature": "verified",
+        "outcome": "not_listed"
+      }
+    },
+    {
+      "name": "not_listed_other_keys",
+      "description": "The API key holds keys, none of them ours: the registered key was replaced on its way to Vaultody.",
+      "fingerprint": "SHA256:1K9sRW4V/tM+To9K/9728DyV3Qg2kE7x/9UELb/Nixg",
+      "request": {
+        "method": "GET",
+        "path": "/api-keys/current/signing-keys",
+        "query": "",
+        "bodyBase64": "",
+        "apiSign": "iqzqE1+T6KeG11+W4GwOsx5+dymS9IHG4EqV8uZcnsQ=",
+        "keypairSign": "9c/ruMbWgkeMOR1D3ErIJ9IgbzVzZAN1D8aZMpl2kKLymDb4PWjRuKDDy5uRwgvjbv5l1FcuZrmbQRx+T8KUDg=="
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "x-api-response-sign": "1UOtzykqbIbk/GxuFxsC96o+zjqLr/RBmMzpFo8AJUc+ot6K9QKiVTLDgW4vEkf/rSFCdMh2LnZZOoWGugnEDA==",
+          "x-api-response-timestamp": "1794201000",
+          "x-api-response-sign-version": "1",
+          "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+        },
+        "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBlMSIsImRhdGEiOnsibGltaXQiOjIsIm9mZnNldCI6MCwidG90YWwiOjIsIml0ZW1zIjpbeyJmaW5nZXJwcmludCI6IlNIQTI1NjpTbFpDUmdqZWp1azgwMWF6ZkU0VElnclVIamtycm1VcW4rWGY0WU9kb0M0IiwiYWxnb3JpdGhtIjoicC0yNTYiLCJzdGF0dXMiOiJhY3RpdmUiLCJjcmVhdGVkVGltZXN0YW1wIjoxNzk1MDAwMDAwLCJhcHByb3ZlZFRpbWVzdGFtcCI6MTc5NTAwMDMwMH0seyJmaW5nZXJwcmludCI6IlNIQTI1NjpOQzRYVDZaazQ4QjF5NWRMYlhaV00rV0dmUms3TkkrM1lpbk9ydXNqTWd3IiwiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInN0YXR1cyI6ImFjdGl2ZSIsImNyZWF0ZWRUaW1lc3RhbXAiOjE3OTUwMDAwMDAsImFwcHJvdmVkVGltZXN0YW1wIjoxNzk1MDAwMzAwfV19fQ=="
+      },
+      "now": 1794201002,
+      "expected": {
+        "signature": "verified",
+        "outcome": "not_listed"
+      }
+    },
+    {
+      "name": "inactive",
+      "description": "Ours is listed with a status other than active.",
+      "fingerprint": "SHA256:1K9sRW4V/tM+To9K/9728DyV3Qg2kE7x/9UELb/Nixg",
+      "request": {
+        "method": "GET",
+        "path": "/api-keys/current/signing-keys",
+        "query": "",
+        "bodyBase64": "",
+        "apiSign": "iqzqE1+T6KeG11+W4GwOsx5+dymS9IHG4EqV8uZcnsQ=",
+        "keypairSign": "9c/ruMbWgkeMOR1D3ErIJ9IgbzVzZAN1D8aZMpl2kKLymDb4PWjRuKDDy5uRwgvjbv5l1FcuZrmbQRx+T8KUDg=="
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "x-api-response-sign": "oyX18vWQQ/ua4NM3DiPzNkbJvdkZdOHJx8v3clNzeeFn7ydmmCGXz4HGcdPlFnefiE4c26i0IBuTQ9LeW3ZwBw==",
+          "x-api-response-timestamp": "1794201000",
+          "x-api-response-sign-version": "1",
+          "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+        },
+        "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBlMSIsImRhdGEiOnsibGltaXQiOjIsIm9mZnNldCI6MCwidG90YWwiOjEsIml0ZW1zIjpbeyJmaW5nZXJwcmludCI6IlNIQTI1NjoxSzlzUlc0Vi90TStUbzlLLzk3MjhEeVYzUWcya0U3eC85VUVMYi9OaXhnIiwiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInN0YXR1cyI6InJldm9rZWQiLCJjcmVhdGVkVGltZXN0YW1wIjoxNzk1MDAwMDAwLCJhcHByb3ZlZFRpbWVzdGFtcCI6MTc5NTAwMDMwMH1dfX0="
+      },
+      "now": 1794201002,
+      "expected": {
+        "signature": "verified",
+        "outcome": "inactive"
+      }
+    },
+    {
+      "name": "refused",
+      "description": "A 401 (no apiVersion in a 401 body): the outcome is refused, with the error code.",
+      "fingerprint": "SHA256:1K9sRW4V/tM+To9K/9728DyV3Qg2kE7x/9UELb/Nixg",
+      "request": {
+        "method": "GET",
+        "path": "/api-keys/current/signing-keys",
+        "query": "",
+        "bodyBase64": "",
+        "apiSign": "iqzqE1+T6KeG11+W4GwOsx5+dymS9IHG4EqV8uZcnsQ=",
+        "keypairSign": "9c/ruMbWgkeMOR1D3ErIJ9IgbzVzZAN1D8aZMpl2kKLymDb4PWjRuKDDy5uRwgvjbv5l1FcuZrmbQRx+T8KUDg=="
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "x-api-response-sign": "OJowhLAvod6xK7OsWqkvrZgjQS51d38uNz6rBDqyznY/sKP3nmCBSSCr7uEF1Nl7Lh9HRvSOa6cSCfwB01coBw==",
+          "x-api-response-timestamp": "1794201000",
+          "x-api-response-sign-version": "1",
+          "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+        },
+        "bodyBase64": "eyJyZXF1ZXN0SWQiOiI2NjMwZjFjMmE5ZTRiNWQ3YzhlOWYwZTMiLCJlcnJvciI6eyJjb2RlIjoiaW52YWxpZF9hcGlfc2lnbiIsIm1lc3NhZ2UiOiJUaGUgcHJvdmlkZWQgQVBJIHNpZ24gaXMgaW52YWxpZCwgcGxlYXNlIGNoZWNrIG91ciBBdXRob3JpemF0aW9uIHNlY3Rpb24gaW4gb3VyIERvY3VtZW50YXRpb24uIn19"
+      },
+      "now": 1794201002,
+      "expected": {
+        "signature": "verified",
+        "outcome": "refused",
+        "code": "invalid_api_sign"
+      }
+    },
+    {
+      "name": "unsigned_active",
+      "description": "No signature headers at all (response signing not switched on): verified only when the caller accepts unsigned answers, and then reported as unsigned.",
+      "fingerprint": "SHA256:1K9sRW4V/tM+To9K/9728DyV3Qg2kE7x/9UELb/Nixg",
+      "request": {
+        "method": "GET",
+        "path": "/api-keys/current/signing-keys",
+        "query": "",
+        "bodyBase64": "",
+        "apiSign": "iqzqE1+T6KeG11+W4GwOsx5+dymS9IHG4EqV8uZcnsQ=",
+        "keypairSign": "9c/ruMbWgkeMOR1D3ErIJ9IgbzVzZAN1D8aZMpl2kKLymDb4PWjRuKDDy5uRwgvjbv5l1FcuZrmbQRx+T8KUDg=="
+      },
+      "response": {
+        "status": 200,
+        "headers": {},
+        "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBlMSIsImRhdGEiOnsibGltaXQiOjIsIm9mZnNldCI6MCwidG90YWwiOjEsIml0ZW1zIjpbeyJmaW5nZXJwcmludCI6IlNIQTI1NjoxSzlzUlc0Vi90TStUbzlLLzk3MjhEeVYzUWcya0U3eC85VUVMYi9OaXhnIiwiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInN0YXR1cyI6ImFjdGl2ZSIsImNyZWF0ZWRUaW1lc3RhbXAiOjE3OTUwMDAwMDAsImFwcHJvdmVkVGltZXN0YW1wIjoxNzk1MDAwMzAwfV19fQ=="
+      },
+      "now": 1794201002,
+      "expected": {
+        "signature": "absent",
+        "outcome": "active"
+      }
+    },
+    {
+      "name": "tampered_list",
+      "description": "The answer listed another key and was changed on the way to list ours: refused before it is read.",
+      "fingerprint": "SHA256:1K9sRW4V/tM+To9K/9728DyV3Qg2kE7x/9UELb/Nixg",
+      "request": {
+        "method": "GET",
+        "path": "/api-keys/current/signing-keys",
+        "query": "",
+        "bodyBase64": "",
+        "apiSign": "iqzqE1+T6KeG11+W4GwOsx5+dymS9IHG4EqV8uZcnsQ=",
+        "keypairSign": "9c/ruMbWgkeMOR1D3ErIJ9IgbzVzZAN1D8aZMpl2kKLymDb4PWjRuKDDy5uRwgvjbv5l1FcuZrmbQRx+T8KUDg=="
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "x-api-response-sign": "Ucms7qrIQR4vokB4l6vENaEs6o74tUfsoINno8Ueu39sxu9jY+sr/zsoFOMcrcQX6GEfMpzZpz8gpBPHF51qDw==",
+          "x-api-response-timestamp": "1794201000",
+          "x-api-response-sign-version": "1",
+          "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+        },
+        "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBlMSIsImRhdGEiOnsibGltaXQiOjIsIm9mZnNldCI6MCwidG90YWwiOjEsIml0ZW1zIjpbeyJmaW5nZXJwcmludCI6IlNIQTI1NjoxSzlzUlc0Vi90TStUbzlLLzk3MjhEeVYzUWcya0U3eC85VUVMYi9OaXhnIiwiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInN0YXR1cyI6ImFjdGl2ZSIsImNyZWF0ZWRUaW1lc3RhbXAiOjE3OTUwMDAwMDAsImFwcHJvdmVkVGltZXN0YW1wIjoxNzk1MDAwMzAwfV19fQ=="
+      },
+      "now": 1794201002,
+      "expected": {
+        "signature": {
+          "error": "invalid"
+        }
+      }
+    },
+    {
+      "name": "keypair_sign_stripped",
+      "description": "The gateway received the request without x-api-keypair-sign (stripped on the way) and signed its answer over that: the answer does not match the request the client sent.",
+      "fingerprint": "SHA256:1K9sRW4V/tM+To9K/9728DyV3Qg2kE7x/9UELb/Nixg",
+      "request": {
+        "method": "GET",
+        "path": "/api-keys/current/signing-keys",
+        "query": "",
+        "bodyBase64": "",
+        "apiSign": "iqzqE1+T6KeG11+W4GwOsx5+dymS9IHG4EqV8uZcnsQ=",
+        "keypairSign": "9c/ruMbWgkeMOR1D3ErIJ9IgbzVzZAN1D8aZMpl2kKLymDb4PWjRuKDDy5uRwgvjbv5l1FcuZrmbQRx+T8KUDg=="
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "x-api-response-sign": "j9kTWGvDXQo6QLG2vb92/ggwSkQnI8+jaUoEHzR8ITlXok11p2K3uHtQu5b3mWz9t1Y+Bp3bjXqIgCjpQ43lAw==",
+          "x-api-response-timestamp": "1794201000",
+          "x-api-response-sign-version": "1",
+          "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+        },
+        "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBlMSIsImRhdGEiOnsibGltaXQiOjIsIm9mZnNldCI6MCwidG90YWwiOjEsIml0ZW1zIjpbeyJmaW5nZXJwcmludCI6IlNIQTI1NjoxSzlzUlc0Vi90TStUbzlLLzk3MjhEeVYzUWcya0U3eC85VUVMYi9OaXhnIiwiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInN0YXR1cyI6ImFjdGl2ZSIsImNyZWF0ZWRUaW1lc3RhbXAiOjE3OTUwMDAwMDAsImFwcHJvdmVkVGltZXN0YW1wIjoxNzk1MDAwMzAwfV19fQ=="
+      },
+      "now": 1794201002,
+      "expected": {
+        "signature": {
+          "error": "invalid"
+        }
+      }
+    },
+    {
+      "name": "partly_stripped",
+      "description": "One of the four signature headers removed: never treated as unsigned.",
+      "fingerprint": "SHA256:1K9sRW4V/tM+To9K/9728DyV3Qg2kE7x/9UELb/Nixg",
+      "request": {
+        "method": "GET",
+        "path": "/api-keys/current/signing-keys",
+        "query": "",
+        "bodyBase64": "",
+        "apiSign": "iqzqE1+T6KeG11+W4GwOsx5+dymS9IHG4EqV8uZcnsQ=",
+        "keypairSign": "9c/ruMbWgkeMOR1D3ErIJ9IgbzVzZAN1D8aZMpl2kKLymDb4PWjRuKDDy5uRwgvjbv5l1FcuZrmbQRx+T8KUDg=="
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "x-api-response-sign": "5LSG8DDESFPWhzlO6ZJHKwQKLbPRHHZkSJ5YYnVqBUwqS5gQbf2phhwyYzmMtLy4czmUeN0A3DdnqJJe+/qPCQ==",
+          "x-api-response-timestamp": "1794201000",
+          "x-api-response-sign-version": "1"
+        },
+        "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBlMSIsImRhdGEiOnsibGltaXQiOjIsIm9mZnNldCI6MCwidG90YWwiOjEsIml0ZW1zIjpbeyJmaW5nZXJwcmludCI6IlNIQTI1NjoxSzlzUlc0Vi90TStUbzlLLzk3MjhEeVYzUWcya0U3eC85VUVMYi9OaXhnIiwiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInN0YXR1cyI6ImFjdGl2ZSIsImNyZWF0ZWRUaW1lc3RhbXAiOjE3OTUwMDAwMDAsImFwcHJvdmVkVGltZXN0YW1wIjoxNzk1MDAwMzAwfV19fQ=="
+      },
+      "now": 1794201002,
+      "expected": {
+        "signature": {
+          "error": "missing"
+        }
+      }
+    }
+  ]
+}

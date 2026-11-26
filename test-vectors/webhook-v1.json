@@ -1,0 +1,294 @@
+{
+  "format": "vaultody webhook signature X-Signature, v1",
+  "warning": "TEST-ONLY secrets.",
+  "source": {
+    "generator": "test-vectors/tools/generate-sdk-vectors.js",
+    "signer": "Vaultody's webhook delivery: HMAC-SHA256 keyed with the webhook's signing secret over JSON.stringify(body), hex, sent as X-Signature with JSON.stringify of the same body"
+  },
+  "rules": {
+    "header": "X-Signature, name matched case-insensitively. Absent or empty: missing. Anything but exactly 64 lowercase hex characters: malformed (no trimming, no case folding).",
+    "signature": "lowercase hex of HMAC-SHA256 keyed with the secret's UTF-8 bytes over the raw body bytes as received; compared in constant time with each configured secret, in order",
+    "verdict": "valid with the index of the first secret that matches (several secrets cover a rotation); otherwise mismatch. The body is parsed only after this.",
+    "replay": "The scheme has no timestamp, so it does not protect against a delivery being sent again, and Vaultody may deliver the same event more than once. A receiver checks whether it already acted on an event, keyed on what the event is about, as the Webhook Notifications page of the docs says: outgoing transaction events data.item.requestId and data.event; incoming ones data.item.transactionId, data.item.address, data.event and data.item.currentConfirmations (an internal transfer: data.item.parentTransactionId and data.item.operationId in place of transactionId)."
+  },
+  "caseFormat": {
+    "bodyBase64": "the raw body as received",
+    "headers": "the request headers",
+    "secrets": "the signing secrets configured, in order",
+    "expected": "{ valid: true, secretIndex } or { valid: false, reason: missing | malformed | mismatch }"
+  },
+  "cases": [
+    {
+      "name": "valid",
+      "description": "A delivery signed with the secret.",
+      "bodyBase64": "eyJ3YWxsZXRJZCI6IjY4NTEyMTIzN2Q3ZDFlMDAwN2FjMWExZCIsIndlYmhvb2tJZCI6IjY4NTE2ZTljNjYyMGIwYTQ3OTBlZDU0MSIsImlkZW1wb3RlbmN5S2V5IjoiMWYyMzI0OTFhMGY1YjVlMzIxNjU1NDZlODBjMzZjOWY4MDQ2ZjY1ODFlY2EyNmM2MjU0MmRiYzhlYzRmMGZhMSIsImFwaVZlcnNpb24iOiIyMDI2LTAzLTIwIiwiZGF0YSI6eyJldmVudCI6IlRSQU5TQUNUSU9OX1JFUVVFU1QiLCJpdGVtIjp7InZhdWx0QWNjb3VudElkIjoiNjliYTU4YzUyOWViNDkwMDA3NDZiMzExIiwiYXNzZXRJZCI6IjY5MTM0NzFjNmIyNzk0ODQxZGM4ZmI2ZiIsInVuaXQiOiJFVEgiLCJyZXF1ZXN0SWQiOiI2ODZjZDI4NjBjYTJmNGZkMjVmNzcwOTkiLCJ0cmFuc2FjdGlvblR5cGUiOiJDT0lOIn19fQ==",
+      "headers": {
+        "X-Signature": "47f6a443ed2d97eec722c7f27a8fb5b554cfb8362ffa35293e65397b7c16bd0e"
+      },
+      "secrets": [
+        "TEST-ONLY webhook signing secret A"
+      ],
+      "expected": {
+        "valid": true,
+        "secretIndex": 0
+      }
+    },
+    {
+      "name": "header_lowercase",
+      "description": "The header name in lowercase, as most servers hand it over.",
+      "bodyBase64": "eyJ3YWxsZXRJZCI6IjY4NTEyMTIzN2Q3ZDFlMDAwN2FjMWExZCIsIndlYmhvb2tJZCI6IjY4NTE2ZTljNjYyMGIwYTQ3OTBlZDU0MSIsImlkZW1wb3RlbmN5S2V5IjoiMWYyMzI0OTFhMGY1YjVlMzIxNjU1NDZlODBjMzZjOWY4MDQ2ZjY1ODFlY2EyNmM2MjU0MmRiYzhlYzRmMGZhMSIsImFwaVZlcnNpb24iOiIyMDI2LTAzLTIwIiwiZGF0YSI6eyJldmVudCI6IlRSQU5TQUNUSU9OX1JFUVVFU1QiLCJpdGVtIjp7InZhdWx0QWNjb3VudElkIjoiNjliYTU4YzUyOWViNDkwMDA3NDZiMzExIiwiYXNzZXRJZCI6IjY5MTM0NzFjNmIyNzk0ODQxZGM4ZmI2ZiIsInVuaXQiOiJFVEgiLCJyZXF1ZXN0SWQiOiI2ODZjZDI4NjBjYTJmNGZkMjVmNzcwOTkiLCJ0cmFuc2FjdGlvblR5cGUiOiJDT0lOIn19fQ==",
+      "headers": {
+        "x-signature": "47f6a443ed2d97eec722c7f27a8fb5b554cfb8362ffa35293e65397b7c16bd0e"
+      },
+      "secrets": [
+        "TEST-ONLY webhook signing secret A"
+      ],
+      "expected": {
+        "valid": true,
+        "secretIndex": 0
+      }
+    },
+    {
+      "name": "header_uppercase",
+      "description": "The header name in uppercase.",
+      "bodyBase64": "eyJ3YWxsZXRJZCI6IjY4NTEyMTIzN2Q3ZDFlMDAwN2FjMWExZCIsIndlYmhvb2tJZCI6IjY4NTE2ZTljNjYyMGIwYTQ3OTBlZDU0MSIsImlkZW1wb3RlbmN5S2V5IjoiMWYyMzI0OTFhMGY1YjVlMzIxNjU1NDZlODBjMzZjOWY4MDQ2ZjY1ODFlY2EyNmM2MjU0MmRiYzhlYzRmMGZhMSIsImFwaVZlcnNpb24iOiIyMDI2LTAzLTIwIiwiZGF0YSI6eyJldmVudCI6IlRSQU5TQUNUSU9OX1JFUVVFU1QiLCJpdGVtIjp7InZhdWx0QWNjb3VudElkIjoiNjliYTU4YzUyOWViNDkwMDA3NDZiMzExIiwiYXNzZXRJZCI6IjY5MTM0NzFjNmIyNzk0ODQxZGM4ZmI2ZiIsInVuaXQiOiJFVEgiLCJyZXF1ZXN0SWQiOiI2ODZjZDI4NjBjYTJmNGZkMjVmNzcwOTkiLCJ0cmFuc2FjdGlvblR5cGUiOiJDT0lOIn19fQ==",
+      "headers": {
+        "X-SIGNATURE": "47f6a443ed2d97eec722c7f27a8fb5b554cfb8362ffa35293e65397b7c16bd0e"
+      },
+      "secrets": [
+        "TEST-ONLY webhook signing secret A"
+      ],
+      "expected": {
+        "valid": true,
+        "secretIndex": 0
+      }
+    },
+    {
+      "name": "unicode_body",
+      "description": "A body with non-ASCII text: the HMAC covers its UTF-8 bytes.",
+      "bodyBase64": "eyJ3YWxsZXRJZCI6IjY4NTEyMTIzN2Q3ZDFlMDAwN2FjMWExZCIsIndlYmhvb2tJZCI6IjY4NTE2ZTljNjYyMGIwYTQ3OTBlZDU0MSIsImlkZW1wb3RlbmN5S2V5IjoiMWYyMzI0OTFhMGY1YjVlMzIxNjU1NDZlODBjMzZjOWY4MDQ2ZjY1ODFlY2EyNmM2MjU0MmRiYzhlYzRmMGZhMSIsImFwaVZlcnNpb24iOiIyMDI2LTAzLTIwIiwiZGF0YSI6eyJldmVudCI6IlRSQU5TQUNUSU9OX1JFUVVFU1QiLCJpdGVtIjp7InZhdWx0QWNjb3VudElkIjoiNjliYTU4YzUyOWViNDkwMDA3NDZiMzExIiwiYXNzZXRJZCI6IjY5MTM0NzFjNmIyNzk0ODQxZGM4ZmI2ZiIsInVuaXQiOiJFVEgiLCJyZXF1ZXN0SWQiOiI2ODZjZDI4NjBjYTJmNGZkMjVmNzcwOTkiLCJ0cmFuc2FjdGlvblR5cGUiOiJDT0lOIiwibm90ZSI6ItCh0LzQtdGC0LrQsCDinJMg5p2x5LqsIn19fQ==",
+      "headers": {
+        "X-Signature": "c48219bfba293c3d42a56183a95e93b9747066c921370ebd43316018699a70ce"
+      },
+      "secrets": [
+        "TEST-ONLY webhook signing secret A"
+      ],
+      "expected": {
+        "valid": true,
+        "secretIndex": 0
+      }
+    },
+    {
+      "name": "unicode_secret",
+      "description": "A secret with non-ASCII characters keys the HMAC with its UTF-8 bytes.",
+      "bodyBase64": "eyJ3YWxsZXRJZCI6IjY4NTEyMTIzN2Q3ZDFlMDAwN2FjMWExZCIsIndlYmhvb2tJZCI6IjY4NTE2ZTljNjYyMGIwYTQ3OTBlZDU0MSIsImlkZW1wb3RlbmN5S2V5IjoiMWYyMzI0OTFhMGY1YjVlMzIxNjU1NDZlODBjMzZjOWY4MDQ2ZjY1ODFlY2EyNmM2MjU0MmRiYzhlYzRmMGZhMSIsImFwaVZlcnNpb24iOiIyMDI2LTAzLTIwIiwiZGF0YSI6eyJldmVudCI6IlRSQU5TQUNUSU9OX1JFUVVFU1QiLCJpdGVtIjp7InZhdWx0QWNjb3VudElkIjoiNjliYTU4YzUyOWViNDkwMDA3NDZiMzExIiwiYXNzZXRJZCI6IjY5MTM0NzFjNmIyNzk0ODQxZGM4ZmI2ZiIsInVuaXQiOiJFVEgiLCJyZXF1ZXN0SWQiOiI2ODZjZDI4NjBjYTJmNGZkMjVmNzcwOTkiLCJ0cmFuc2FjdGlvblR5cGUiOiJDT0lOIn19fQ==",
+      "headers": {
+        "X-Signature": "e7404897366c38d13bbebc59ad40d3d5ea9a0d71d5ff395ea7907b703cc6abec"
+      },
+      "secrets": [
+        "TEST-ONLY тайна ✓ 秘密"
+      ],
+      "expected": {
+        "valid": true,
+        "secretIndex": 0
+      }
+    },
+    {
+      "name": "rotation_new_secret",
+      "description": "During a rotation both secrets are configured; signed with the new one (second).",
+      "bodyBase64": "eyJ3YWxsZXRJZCI6IjY4NTEyMTIzN2Q3ZDFlMDAwN2FjMWExZCIsIndlYmhvb2tJZCI6IjY4NTE2ZTljNjYyMGIwYTQ3OTBlZDU0MSIsImlkZW1wb3RlbmN5S2V5IjoiMWYyMzI0OTFhMGY1YjVlMzIxNjU1NDZlODBjMzZjOWY4MDQ2ZjY1ODFlY2EyNmM2MjU0MmRiYzhlYzRmMGZhMSIsImFwaVZlcnNpb24iOiIyMDI2LTAzLTIwIiwiZGF0YSI6eyJldmVudCI6IlRSQU5TQUNUSU9OX1JFUVVFU1QiLCJpdGVtIjp7InZhdWx0QWNjb3VudElkIjoiNjliYTU4YzUyOWViNDkwMDA3NDZiMzExIiwiYXNzZXRJZCI6IjY5MTM0NzFjNmIyNzk0ODQxZGM4ZmI2ZiIsInVuaXQiOiJFVEgiLCJyZXF1ZXN0SWQiOiI2ODZjZDI4NjBjYTJmNGZkMjVmNzcwOTkiLCJ0cmFuc2FjdGlvblR5cGUiOiJDT0lOIn19fQ==",
+      "headers": {
+        "X-Signature": "d0d03e8f2ab60684fa8c2f749d0bbc0c8de564f3621769b659aaa065dcb7540b"
+      },
+      "secrets": [
+        "TEST-ONLY webhook signing secret A",
+        "TEST-ONLY webhook signing secret B"
+      ],
+      "expected": {
+        "valid": true,
+        "secretIndex": 1
+      }
+    },
+    {
+      "name": "rotation_old_secret",
+      "description": "Signed with the old one (first).",
+      "bodyBase64": "eyJ3YWxsZXRJZCI6IjY4NTEyMTIzN2Q3ZDFlMDAwN2FjMWExZCIsIndlYmhvb2tJZCI6IjY4NTE2ZTljNjYyMGIwYTQ3OTBlZDU0MSIsImlkZW1wb3RlbmN5S2V5IjoiMWYyMzI0OTFhMGY1YjVlMzIxNjU1NDZlODBjMzZjOWY4MDQ2ZjY1ODFlY2EyNmM2MjU0MmRiYzhlYzRmMGZhMSIsImFwaVZlcnNpb24iOiIyMDI2LTAzLTIwIiwiZGF0YSI6eyJldmVudCI6IlRSQU5TQUNUSU9OX1JFUVVFU1QiLCJpdGVtIjp7InZhdWx0QWNjb3VudElkIjoiNjliYTU4YzUyOWViNDkwMDA3NDZiMzExIiwiYXNzZXRJZCI6IjY5MTM0NzFjNmIyNzk0ODQxZGM4ZmI2ZiIsInVuaXQiOiJFVEgiLCJyZXF1ZXN0SWQiOiI2ODZjZDI4NjBjYTJmNGZkMjVmNzcwOTkiLCJ0cmFuc2FjdGlvblR5cGUiOiJDT0lOIn19fQ==",
+      "headers": {
+        "X-Signature": "47f6a443ed2d97eec722c7f27a8fb5b554cfb8362ffa35293e65397b7c16bd0e"
+      },
+      "secrets": [
+        "TEST-ONLY webhook signing secret A",
+        "TEST-ONLY webhook signing secret B"
+      ],
+      "expected": {
+        "valid": true,
+        "secretIndex": 0
+      }
+    },
+    {
+      "name": "tampered_body",
+      "description": "The body changed after signing.",
+      "bodyBase64": "eyJ3YWxsZXRJZCI6IjY4NTEyMTIzN2Q3ZDFlMDAwN2FjMWExZCIsIndlYmhvb2tJZCI6IjY4NTE2ZTljNjYyMGIwYTQ3OTBlZDU0MSIsImlkZW1wb3RlbmN5S2V5IjoiMWYyMzI0OTFhMGY1YjVlMzIxNjU1NDZlODBjMzZjOWY4MDQ2ZjY1ODFlY2EyNmM2MjU0MmRiYzhlYzRmMGZhMSIsImFwaVZlcnNpb24iOiIyMDI2LTAzLTIwIiwiZGF0YSI6eyJldmVudCI6IlRSQU5TQUNUSU9OX1JFUVVFU1QiLCJpdGVtIjp7InZhdWx0QWNjb3VudElkIjoiNjliYTU4YzUyOWViNDkwMDA3NDZiMzExIiwiYXNzZXRJZCI6IjY5MTM0NzFjNmIyNzk0ODQxZGM4ZmI2ZiIsInVuaXQiOiJCVEMiLCJyZXF1ZXN0SWQiOiI2ODZjZDI4NjBjYTJmNGZkMjVmNzcwOTkiLCJ0cmFuc2FjdGlvblR5cGUiOiJDT0lOIn19fQ==",
+      "headers": {
+        "X-Signature": "47f6a443ed2d97eec722c7f27a8fb5b554cfb8362ffa35293e65397b7c16bd0e"
+      },
+      "secrets": [
+        "TEST-ONLY webhook signing secret A"
+      ],
+      "expected": {
+        "valid": false,
+        "reason": "mismatch"
+      }
+    },
+    {
+      "name": "reserialised_body",
+      "description": "The same JSON re-serialised with spaces: the raw body is signed, not the parsed one.",
+      "bodyBase64": "ewogICJ3YWxsZXRJZCI6ICI2ODUxMjEyMzdkN2QxZTAwMDdhYzFhMWQiLAogICJ3ZWJob29rSWQiOiAiNjg1MTZlOWM2NjIwYjBhNDc5MGVkNTQxIiwKICAiaWRlbXBvdGVuY3lLZXkiOiAiMWYyMzI0OTFhMGY1YjVlMzIxNjU1NDZlODBjMzZjOWY4MDQ2ZjY1ODFlY2EyNmM2MjU0MmRiYzhlYzRmMGZhMSIsCiAgImFwaVZlcnNpb24iOiAiMjAyNi0wMy0yMCIsCiAgImRhdGEiOiB7CiAgICAiZXZlbnQiOiAiVFJBTlNBQ1RJT05fUkVRVUVTVCIsCiAgICAiaXRlbSI6IHsKICAgICAgInZhdWx0QWNjb3VudElkIjogIjY5YmE1OGM1MjllYjQ5MDAwNzQ2YjMxMSIsCiAgICAgICJhc3NldElkIjogIjY5MTM0NzFjNmIyNzk0ODQxZGM4ZmI2ZiIsCiAgICAgICJ1bml0IjogIkVUSCIsCiAgICAgICJyZXF1ZXN0SWQiOiAiNjg2Y2QyODYwY2EyZjRmZDI1Zjc3MDk5IiwKICAgICAgInRyYW5zYWN0aW9uVHlwZSI6ICJDT0lOIgogICAgfQogIH0KfQ==",
+      "headers": {
+        "X-Signature": "47f6a443ed2d97eec722c7f27a8fb5b554cfb8362ffa35293e65397b7c16bd0e"
+      },
+      "secrets": [
+        "TEST-ONLY webhook signing secret A"
+      ],
+      "expected": {
+        "valid": false,
+        "reason": "mismatch"
+      }
+    },
+    {
+      "name": "trailing_newline",
+      "description": "A newline added to the body.",
+      "bodyBase64": "eyJ3YWxsZXRJZCI6IjY4NTEyMTIzN2Q3ZDFlMDAwN2FjMWExZCIsIndlYmhvb2tJZCI6IjY4NTE2ZTljNjYyMGIwYTQ3OTBlZDU0MSIsImlkZW1wb3RlbmN5S2V5IjoiMWYyMzI0OTFhMGY1YjVlMzIxNjU1NDZlODBjMzZjOWY4MDQ2ZjY1ODFlY2EyNmM2MjU0MmRiYzhlYzRmMGZhMSIsImFwaVZlcnNpb24iOiIyMDI2LTAzLTIwIiwiZGF0YSI6eyJldmVudCI6IlRSQU5TQUNUSU9OX1JFUVVFU1QiLCJpdGVtIjp7InZhdWx0QWNjb3VudElkIjoiNjliYTU4YzUyOWViNDkwMDA3NDZiMzExIiwiYXNzZXRJZCI6IjY5MTM0NzFjNmIyNzk0ODQxZGM4ZmI2ZiIsInVuaXQiOiJFVEgiLCJyZXF1ZXN0SWQiOiI2ODZjZDI4NjBjYTJmNGZkMjVmNzcwOTkiLCJ0cmFuc2FjdGlvblR5cGUiOiJDT0lOIn19fQo=",
+      "headers": {
+        "X-Signature": "47f6a443ed2d97eec722c7f27a8fb5b554cfb8362ffa35293e65397b7c16bd0e"
+      },
+      "secrets": [
+        "TEST-ONLY webhook signing secret A"
+      ],
+      "expected": {
+        "valid": false,
+        "reason": "mismatch"
+      }
+    },
+    {
+      "name": "wrong_secret",
+      "description": "Signed with another secret.",
+      "bodyBase64": "eyJ3YWxsZXRJZCI6IjY4NTEyMTIzN2Q3ZDFlMDAwN2FjMWExZCIsIndlYmhvb2tJZCI6IjY4NTE2ZTljNjYyMGIwYTQ3OTBlZDU0MSIsImlkZW1wb3RlbmN5S2V5IjoiMWYyMzI0OTFhMGY1YjVlMzIxNjU1NDZlODBjMzZjOWY4MDQ2ZjY1ODFlY2EyNmM2MjU0MmRiYzhlYzRmMGZhMSIsImFwaVZlcnNpb24iOiIyMDI2LTAzLTIwIiwiZGF0YSI6eyJldmVudCI6IlRSQU5TQUNUSU9OX1JFUVVFU1QiLCJpdGVtIjp7InZhdWx0QWNjb3VudElkIjoiNjliYTU4YzUyOWViNDkwMDA3NDZiMzExIiwiYXNzZXRJZCI6IjY5MTM0NzFjNmIyNzk0ODQxZGM4ZmI2ZiIsInVuaXQiOiJFVEgiLCJyZXF1ZXN0SWQiOiI2ODZjZDI4NjBjYTJmNGZkMjVmNzcwOTkiLCJ0cmFuc2FjdGlvblR5cGUiOiJDT0lOIn19fQ==",
+      "headers": {
+        "X-Signature": "d0d03e8f2ab60684fa8c2f749d0bbc0c8de564f3621769b659aaa065dcb7540b"
+      },
+      "secrets": [
+        "TEST-ONLY webhook signing secret A"
+      ],
+      "expected": {
+        "valid": false,
+        "reason": "mismatch"
+      }
+    },
+    {
+      "name": "uppercase_hex",
+      "description": "The right digest in uppercase hex.",
+      "bodyBase64": "eyJ3YWxsZXRJZCI6IjY4NTEyMTIzN2Q3ZDFlMDAwN2FjMWExZCIsIndlYmhvb2tJZCI6IjY4NTE2ZTljNjYyMGIwYTQ3OTBlZDU0MSIsImlkZW1wb3RlbmN5S2V5IjoiMWYyMzI0OTFhMGY1YjVlMzIxNjU1NDZlODBjMzZjOWY4MDQ2ZjY1ODFlY2EyNmM2MjU0MmRiYzhlYzRmMGZhMSIsImFwaVZlcnNpb24iOiIyMDI2LTAzLTIwIiwiZGF0YSI6eyJldmVudCI6IlRSQU5TQUNUSU9OX1JFUVVFU1QiLCJpdGVtIjp7InZhdWx0QWNjb3VudElkIjoiNjliYTU4YzUyOWViNDkwMDA3NDZiMzExIiwiYXNzZXRJZCI6IjY5MTM0NzFjNmIyNzk0ODQxZGM4ZmI2ZiIsInVuaXQiOiJFVEgiLCJyZXF1ZXN0SWQiOiI2ODZjZDI4NjBjYTJmNGZkMjVmNzcwOTkiLCJ0cmFuc2FjdGlvblR5cGUiOiJDT0lOIn19fQ==",
+      "headers": {
+        "X-Signature": "47F6A443ED2D97EEC722C7F27A8FB5B554CFB8362FFA35293E65397B7C16BD0E"
+      },
+      "secrets": [
+        "TEST-ONLY webhook signing secret A"
+      ],
+      "expected": {
+        "valid": false,
+        "reason": "malformed"
+      }
+    },
+    {
+      "name": "missing_header",
+      "description": "No X-Signature.",
+      "bodyBase64": "eyJ3YWxsZXRJZCI6IjY4NTEyMTIzN2Q3ZDFlMDAwN2FjMWExZCIsIndlYmhvb2tJZCI6IjY4NTE2ZTljNjYyMGIwYTQ3OTBlZDU0MSIsImlkZW1wb3RlbmN5S2V5IjoiMWYyMzI0OTFhMGY1YjVlMzIxNjU1NDZlODBjMzZjOWY4MDQ2ZjY1ODFlY2EyNmM2MjU0MmRiYzhlYzRmMGZhMSIsImFwaVZlcnNpb24iOiIyMDI2LTAzLTIwIiwiZGF0YSI6eyJldmVudCI6IlRSQU5TQUNUSU9OX1JFUVVFU1QiLCJpdGVtIjp7InZhdWx0QWNjb3VudElkIjoiNjliYTU4YzUyOWViNDkwMDA3NDZiMzExIiwiYXNzZXRJZCI6IjY5MTM0NzFjNmIyNzk0ODQxZGM4ZmI2ZiIsInVuaXQiOiJFVEgiLCJyZXF1ZXN0SWQiOiI2ODZjZDI4NjBjYTJmNGZkMjVmNzcwOTkiLCJ0cmFuc2FjdGlvblR5cGUiOiJDT0lOIn19fQ==",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "secrets": [
+        "TEST-ONLY webhook signing secret A"
+      ],
+      "expected": {
+        "valid": false,
+        "reason": "missing"
+      }
+    },
+    {
+      "name": "empty_header",
+      "description": "An empty X-Signature.",
+      "bodyBase64": "eyJ3YWxsZXRJZCI6IjY4NTEyMTIzN2Q3ZDFlMDAwN2FjMWExZCIsIndlYmhvb2tJZCI6IjY4NTE2ZTljNjYyMGIwYTQ3OTBlZDU0MSIsImlkZW1wb3RlbmN5S2V5IjoiMWYyMzI0OTFhMGY1YjVlMzIxNjU1NDZlODBjMzZjOWY4MDQ2ZjY1ODFlY2EyNmM2MjU0MmRiYzhlYzRmMGZhMSIsImFwaVZlcnNpb24iOiIyMDI2LTAzLTIwIiwiZGF0YSI6eyJldmVudCI6IlRSQU5TQUNUSU9OX1JFUVVFU1QiLCJpdGVtIjp7InZhdWx0QWNjb3VudElkIjoiNjliYTU4YzUyOWViNDkwMDA3NDZiMzExIiwiYXNzZXRJZCI6IjY5MTM0NzFjNmIyNzk0ODQxZGM4ZmI2ZiIsInVuaXQiOiJFVEgiLCJyZXF1ZXN0SWQiOiI2ODZjZDI4NjBjYTJmNGZkMjVmNzcwOTkiLCJ0cmFuc2FjdGlvblR5cGUiOiJDT0lOIn19fQ==",
+      "headers": {
+        "X-Signature": ""
+      },
+      "secrets": [
+        "TEST-ONLY webhook signing secret A"
+      ],
+      "expected": {
+        "valid": false,
+        "reason": "missing"
+      }
+    },
+    {
+      "name": "short_signature",
+      "description": "63 hex characters.",
+      "bodyBase64": "eyJ3YWxsZXRJZCI6IjY4NTEyMTIzN2Q3ZDFlMDAwN2FjMWExZCIsIndlYmhvb2tJZCI6IjY4NTE2ZTljNjYyMGIwYTQ3OTBlZDU0MSIsImlkZW1wb3RlbmN5S2V5IjoiMWYyMzI0OTFhMGY1YjVlMzIxNjU1NDZlODBjMzZjOWY4MDQ2ZjY1ODFlY2EyNmM2MjU0MmRiYzhlYzRmMGZhMSIsImFwaVZlcnNpb24iOiIyMDI2LTAzLTIwIiwiZGF0YSI6eyJldmVudCI6IlRSQU5TQUNUSU9OX1JFUVVFU1QiLCJpdGVtIjp7InZhdWx0QWNjb3VudElkIjoiNjliYTU4YzUyOWViNDkwMDA3NDZiMzExIiwiYXNzZXRJZCI6IjY5MTM0NzFjNmIyNzk0ODQxZGM4ZmI2ZiIsInVuaXQiOiJFVEgiLCJyZXF1ZXN0SWQiOiI2ODZjZDI4NjBjYTJmNGZkMjVmNzcwOTkiLCJ0cmFuc2FjdGlvblR5cGUiOiJDT0lOIn19fQ==",
+      "headers": {
+        "X-Signature": "47f6a443ed2d97eec722c7f27a8fb5b554cfb8362ffa35293e65397b7c16bd0"
+      },
+      "secrets": [
+        "TEST-ONLY webhook signing secret A"
+      ],
+      "expected": {
+        "valid": false,
+        "reason": "malformed"
+      }
+    },
+    {
+      "name": "signature_with_space",
+      "description": "A trailing space.",
+      "bodyBase64": "eyJ3YWxsZXRJZCI6IjY4NTEyMTIzN2Q3ZDFlMDAwN2FjMWExZCIsIndlYmhvb2tJZCI6IjY4NTE2ZTljNjYyMGIwYTQ3OTBlZDU0MSIsImlkZW1wb3RlbmN5S2V5IjoiMWYyMzI0OTFhMGY1YjVlMzIxNjU1NDZlODBjMzZjOWY4MDQ2ZjY1ODFlY2EyNmM2MjU0MmRiYzhlYzRmMGZhMSIsImFwaVZlcnNpb24iOiIyMDI2LTAzLTIwIiwiZGF0YSI6eyJldmVudCI6IlRSQU5TQUNUSU9OX1JFUVVFU1QiLCJpdGVtIjp7InZhdWx0QWNjb3VudElkIjoiNjliYTU4YzUyOWViNDkwMDA3NDZiMzExIiwiYXNzZXRJZCI6IjY5MTM0NzFjNmIyNzk0ODQxZGM4ZmI2ZiIsInVuaXQiOiJFVEgiLCJyZXF1ZXN0SWQiOiI2ODZjZDI4NjBjYTJmNGZkMjVmNzcwOTkiLCJ0cmFuc2FjdGlvblR5cGUiOiJDT0lOIn19fQ==",
+      "headers": {
+        "X-Signature": "47f6a443ed2d97eec722c7f27a8fb5b554cfb8362ffa35293e65397b7c16bd0e "
+      },
+      "secrets": [
+        "TEST-ONLY webhook signing secret A"
+      ],
+      "expected": {
+        "valid": false,
+        "reason": "malformed"
+      }
+    },
+    {
+      "name": "base64_signature",
+      "description": "The digest in base64 instead of hex.",
+      "bodyBase64": "eyJ3YWxsZXRJZCI6IjY4NTEyMTIzN2Q3ZDFlMDAwN2FjMWExZCIsIndlYmhvb2tJZCI6IjY4NTE2ZTljNjYyMGIwYTQ3OTBlZDU0MSIsImlkZW1wb3RlbmN5S2V5IjoiMWYyMzI0OTFhMGY1YjVlMzIxNjU1NDZlODBjMzZjOWY4MDQ2ZjY1ODFlY2EyNmM2MjU0MmRiYzhlYzRmMGZhMSIsImFwaVZlcnNpb24iOiIyMDI2LTAzLTIwIiwiZGF0YSI6eyJldmVudCI6IlRSQU5TQUNUSU9OX1JFUVVFU1QiLCJpdGVtIjp7InZhdWx0QWNjb3VudElkIjoiNjliYTU4YzUyOWViNDkwMDA3NDZiMzExIiwiYXNzZXRJZCI6IjY5MTM0NzFjNmIyNzk0ODQxZGM4ZmI2ZiIsInVuaXQiOiJFVEgiLCJyZXF1ZXN0SWQiOiI2ODZjZDI4NjBjYTJmNGZkMjVmNzcwOTkiLCJ0cmFuc2FjdGlvblR5cGUiOiJDT0lOIn19fQ==",
+      "headers": {
+        "X-Signature": "R/akQ+0tl+7HIsfyeo+1tVTPuDYv+jUpPmU5e3wWvQ4="
+      },
+      "secrets": [
+        "TEST-ONLY webhook signing secret A"
+      ],
+      "expected": {
+        "valid": false,
+        "reason": "malformed"
+      }
+    },
+    {
+      "name": "prefixed_signature",
+      "description": "A \"sha256=\" prefix, as other providers write it.",
+      "bodyBase64": "eyJ3YWxsZXRJZCI6IjY4NTEyMTIzN2Q3ZDFlMDAwN2FjMWExZCIsIndlYmhvb2tJZCI6IjY4NTE2ZTljNjYyMGIwYTQ3OTBlZDU0MSIsImlkZW1wb3RlbmN5S2V5IjoiMWYyMzI0OTFhMGY1YjVlMzIxNjU1NDZlODBjMzZjOWY4MDQ2ZjY1ODFlY2EyNmM2MjU0MmRiYzhlYzRmMGZhMSIsImFwaVZlcnNpb24iOiIyMDI2LTAzLTIwIiwiZGF0YSI6eyJldmVudCI6IlRSQU5TQUNUSU9OX1JFUVVFU1QiLCJpdGVtIjp7InZhdWx0QWNjb3VudElkIjoiNjliYTU4YzUyOWViNDkwMDA3NDZiMzExIiwiYXNzZXRJZCI6IjY5MTM0NzFjNmIyNzk0ODQxZGM4ZmI2ZiIsInVuaXQiOiJFVEgiLCJyZXF1ZXN0SWQiOiI2ODZjZDI4NjBjYTJmNGZkMjVmNzcwOTkiLCJ0cmFuc2FjdGlvblR5cGUiOiJDT0lOIn19fQ==",
+      "headers": {
+        "X-Signature": "sha256=47f6a443ed2d97eec722c7f27a8fb5b554cfb8362ffa35293e65397b7c16bd0e"
+      },
+      "secrets": [
+        "TEST-ONLY webhook signing secret A"
+      ],
+      "expected": {
+        "valid": false,
+        "reason": "malformed"
+      }
+    }
+  ]
+}

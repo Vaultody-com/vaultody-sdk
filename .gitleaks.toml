@@ -1,0 +1,31 @@
+# gitleaks configuration for scripts/secret-scan.sh: the default rules, plus two allow-lists.
+#
+# The shared test vectors, their generators and the test suites hold TEST-ONLY keys, secrets, signatures
+# and example ids on purpose: they are derived from fixed labels or copied from the docs' examples, marked
+# TEST-ONLY, and public by design, so every language can check the same bytes. They are allowed by path
+# (test-vectors/, node/packages/*/test, python/*/tests), and nowhere else. A finding anywhere else fails the scan.
+#
+# The PHP tests read their keys from the shared vectors, so they are allowed only for the two rules their
+# fixtures trip: placeholder PEM armour for the key-reading refusals (private-key) and the webhook vector's
+# idempotency key (generic-api-key). Any other rule still fails there.
+
+title = "vaultody-sdk"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "TEST-ONLY keys and secrets in the shared vectors, their generators and the test suites"
+paths = [
+    '''^test-vectors/[^/]+\.json$''',
+    '''^test-vectors/tools/''',
+    '''^node/packages/[^/]+/test/''',
+    '''^python/[^/]+/tests/''',
+]
+
+[[allowlists]]
+description = "TEST-ONLY fixtures in the PHP tests: placeholder PEM armour and the webhook vector's idempotency key"
+targetRules = ["private-key", "generic-api-key"]
+paths = [
+    '''^php/tests/''',
+]

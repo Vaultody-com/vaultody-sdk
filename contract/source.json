@@ -1,0 +1,27 @@
+{
+  "about": "Where each file in contract/ was copied from. scripts/coverage.mjs refuses to run when a copy's SHA-256 differs from the one recorded here, so every contract change is a reviewed edit of both. Refresh: copy the files from the commits named, make the changes listed in removed, then update this file.",
+  "files": {
+    "openapi.json": {
+      "source": "the OpenAPI document published with the API reference (developers.vaultody.com)",
+      "commit": "b3d80e6c109c4f608fa73eb6ba30551bcea15a13",
+      "path": "openapi.json",
+      "note": "API version 2026-03-20; the docs build of published.json.",
+      "removed": "every x-route-key (an internal routing extension, not part of the API)",
+      "sha256": "45f7db7c5c98c348b74e02da580a00a704f5e5cf66f618f872ac2cb2773556c0"
+    },
+    "published.json": {
+      "source": "the build stamp published with that document",
+      "commit": "b3d80e6c109c4f608fa73eb6ba30551bcea15a13",
+      "path": "published.json",
+      "sha256": "9ffbb9c53c38ba0548efd19710fe7e5a5dd8f7928dcc6b43c29b0eb54a87d148"
+    },
+    "pending/api-keys/list-api-key-signing-keys.yaml": {
+      "source": "the API reference's entry for an operation documented but not live on production yet",
+      "commit": "4a317647f24b8ef5814a9b212a8eee960a4318b8",
+      "path": "openapi/pending/api-keys/list-api-key-signing-keys.yaml",
+      "note": "Moves out of pending/ when the published document lists it.",
+      "removed": "the header comment about the docs build",
+      "sha256": "820e058ec4ae732052cd056e93fee9718fbb752038e51d8bdb756e9adf34bae1"
+    }
+  }
+}

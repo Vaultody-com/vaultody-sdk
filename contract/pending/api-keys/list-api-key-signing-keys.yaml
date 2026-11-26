@@ -1,0 +1,30 @@
+# Documented, not published in the API reference yet: it moves into contract/openapi.json once the operation is
+# live on production and the published document lists it.
+operation: "GET /api-keys/current/signing-keys"
+operationId: listApiKeySigningKeys
+group: api-keys
+slug: list-api-key-signing-keys
+order: 1
+title: List API Key Signing Keys
+metaDescription: "List the public keys registered for request signing on the API key that makes the call, with each key's fingerprint and algorithm."
+summary: "Lists the public keys registered for request signing on the API key that makes the call, so you can confirm they are your own."
+description: |
+  Use it after an owner approves a signing key, and whenever you want to check: compare each `fingerprint` with
+  the fingerprint of your own public key. A fingerprint that is not yours means the public key was replaced on its
+  way to Vaultody: remove that key in the Dashboard at once and contact support. Verify the response's signature
+  before you compare, as described in [Verifying responses](/get-started/verifying-responses).
+
+  The list covers the API key in `x-api-key`, so the request takes no parameters. It holds at most two keys, the
+  most an API key can have, and is empty for an API key without a signing key. The call is free and works with
+  every API key. It is the one call that needs only the HMAC signature, not the key-pair one, so it still answers
+  when the registered key is not yours. See [Request signing](/get-started/request-signing) for how to set up, sign with and rotate a
+  signing key.
+fields:
+  "fingerprint": { description: "The key's fingerprint: `SHA256:` followed by the Base64 of the SHA-256 of the public key in DER form, without `=` padding. Send it in `x-api-keypair-id` with requests signed with this key.", example: "SHA256:1K9sRW4V/tM+To9K/9728DyV3Qg2kE7x/9UELb/Nixg" }
+  "algorithm": { description: "The key's algorithm: `ed25519` or `p-256` (ECDSA P-256).", example: "ed25519" }
+  "status": { description: "The key's status. The list holds approved keys only, so it is always `active`.", example: "active" }
+  "createdTimestamp": { description: "When the key was sent for approval in the Dashboard, as a Unix timestamp in seconds.", example: 1795000000 }
+  "approvedTimestamp": { description: "When an owner approved the key, as a Unix timestamp in seconds. Requests on the API key need the key-pair signature from then on.", example: 1795000300 }
+extraErrors: []
+events: []
+legacyUrls: []

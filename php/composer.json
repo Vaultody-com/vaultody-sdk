@@ -1,0 +1,22 @@
+{
+    "name": "vaultody/sdk",
+    "description": "The official Vaultody SDK for PHP: a method for every documented API operation, every request signed, every response and every vault address verified.",
+    "type": "library",
+    "license": "Apache-2.0",
+    "require": {
+        "php": ">=8.2",
+        "ext-curl": "*",
+        "ext-hash": "*",
+        "ext-json": "*",
+        "ext-openssl": "*",
+        "ext-sodium": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Vaultody\\Sdk\\": "src/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    }
+}

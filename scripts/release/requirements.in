@@ -1,0 +1,6 @@
+# The tools pack.sh builds and checks the Python packages with; requirements.txt is this, locked with hashes:
+#   pip-compile --generate-hashes --allow-unsafe --no-header --strip-extras -o requirements.txt requirements.in
+# (pip-tools 7.6.2 on Python 3.10, the oldest the packages support, so the lock holds what every later Python needs too).
+build==1.6.1
+setuptools==84.2.1
+twine==7.0.0

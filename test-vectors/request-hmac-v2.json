@@ -1,0 +1,393 @@
+{
+  "format": "vaultody request signature x-api-sign, version 2",
+  "warning": "TEST-ONLY KEYS AND SECRETS. Every secret and private key in this file is public. Never use them outside tests.",
+  "source": {
+    "generator": "test-vectors/tools/generate-gateway-vectors.js",
+    "gateway": {
+      "commit": "1a84dd507bb72153e2f2238fea9ac299935cc7fe"
+    }
+  },
+  "wire": {
+    "signedString": "\"v2\\n\" timestamp \"\\n\" method \"\\n\" path \"\\n\" apiVersion \"\\n\" passphrase \"\\n\" nonce \"\\n\" query \"\\n\" body, as UTF-8, no trailing newline (as the gateway builds it)",
+    "fields": "timestamp = x-api-timestamp; method as sent; path as sent, without the query (with the /v2 prefix if used); apiVersion = x-api-version, empty if not sent; passphrase = x-api-passphrase; nonce = x-api-nonce, empty if not sent; query = the raw query string after the first \"?\", empty if none; body = the raw body as sent, empty if none",
+    "signature": "x-api-sign = standard base64 (with padding) of HMAC-SHA256 keyed with the base64-decoded API secret over the signed string; sent with x-api-sign-version: 2",
+    "secret": "The SDK accepts an API secret in standard base64, padding optional, decoding to at least one byte, and refuses anything else with invalid_api_secret before signing."
+  },
+  "caseFormat": {
+    "secret": "the API secret as configured",
+    "request": "the request fields as sent",
+    "expected": "{ signedString, signedStringBase64, signature } or { error }"
+  },
+  "cases": [
+    {
+      "name": "post_all_fields",
+      "description": "POST with x-api-version, a nonce, a query string and a body.",
+      "secret": "9PRj8ICIohJMpg==",
+      "request": {
+        "timestamp": "1794201000",
+        "method": "POST",
+        "path": "/vaults/6630f1c2a9e4b5d7c8e9f0a1/bitcoin/mainnet/addresses",
+        "apiVersion": "2026-03-20",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5",
+        "query": "context=yes",
+        "body": "{\"context\":\"yes\",\"data\":{\"item\":{\"label\":\"deposit-7\"}}}"
+      },
+      "expected": {
+        "signedString": "v2\n1794201000\nPOST\n/vaults/6630f1c2a9e4b5d7c8e9f0a1/bitcoin/mainnet/addresses\n2026-03-20\nTEST-ONLY passphrase 7\n6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5\ncontext=yes\n{\"context\":\"yes\",\"data\":{\"item\":{\"label\":\"deposit-7\"}}}",
+        "signedStringBase64": "djIKMTc5NDIwMTAwMApQT1NUCi92YXVsdHMvNjYzMGYxYzJhOWU0YjVkN2M4ZTlmMGExL2JpdGNvaW4vbWFpbm5ldC9hZGRyZXNzZXMKMjAyNi0wMy0yMApURVNULU9OTFkgcGFzc3BocmFzZSA3CjZmMWMyYTllMGI1ZDQ3YzhhOWU0ZjBhMWMyYjNkNGU1CmNvbnRleHQ9eWVzCnsiY29udGV4dCI6InllcyIsImRhdGEiOnsiaXRlbSI6eyJsYWJlbCI6ImRlcG9zaXQtNyJ9fX0=",
+        "signature": "GxM+E6SkTFB9jb45xjvjn5Ah/TpgcBTEkYqk5LJZocI="
+      }
+    },
+    {
+      "name": "get_empty_fields",
+      "description": "GET without x-api-version, nonce, query string or body: those four are empty lines.",
+      "secret": "9PRj8ICIohJMpg==",
+      "request": {
+        "timestamp": "1794201000",
+        "method": "GET",
+        "path": "/vaults/main",
+        "apiVersion": "",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "",
+        "query": "",
+        "body": ""
+      },
+      "expected": {
+        "signedString": "v2\n1794201000\nGET\n/vaults/main\n\nTEST-ONLY passphrase 7\n\n\n",
+        "signedStringBase64": "djIKMTc5NDIwMTAwMApHRVQKL3ZhdWx0cy9tYWluCgpURVNULU9OTFkgcGFzc3BocmFzZSA3CgoK",
+        "signature": "rslV89HUQMMO4G9pJy4HyMPNaweT1NURohvyKtGtDQk="
+      }
+    },
+    {
+      "name": "get_list_vaults",
+      "description": "GET /vaults/main?limit=50 with x-api-version and a nonce, as the SDK sends it.",
+      "secret": "9PRj8ICIohJMpg==",
+      "request": {
+        "timestamp": "1794201000",
+        "method": "GET",
+        "path": "/vaults/main",
+        "apiVersion": "2026-03-20",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "0c9b8a7f6e5d4c3b2a1908f7e6d5c4b3",
+        "query": "limit=50",
+        "body": ""
+      },
+      "expected": {
+        "signedString": "v2\n1794201000\nGET\n/vaults/main\n2026-03-20\nTEST-ONLY passphrase 7\n0c9b8a7f6e5d4c3b2a1908f7e6d5c4b3\nlimit=50\n",
+        "signedStringBase64": "djIKMTc5NDIwMTAwMApHRVQKL3ZhdWx0cy9tYWluCjIwMjYtMDMtMjAKVEVTVC1PTkxZIHBhc3NwaHJhc2UgNwowYzliOGE3ZjZlNWQ0YzNiMmExOTA4ZjdlNmQ1YzRiMwpsaW1pdD01MAo=",
+        "signature": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY="
+      }
+    },
+    {
+      "name": "no_api_version",
+      "description": "x-api-version not sent: an empty line.",
+      "secret": "9PRj8ICIohJMpg==",
+      "request": {
+        "timestamp": "1794201000",
+        "method": "POST",
+        "path": "/vaults/6630f1c2a9e4b5d7c8e9f0a1/bitcoin/mainnet/addresses",
+        "apiVersion": "",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5",
+        "query": "",
+        "body": "{\"context\":\"yes\",\"data\":{\"item\":{\"label\":\"deposit-7\"}}}"
+      },
+      "expected": {
+        "signedString": "v2\n1794201000\nPOST\n/vaults/6630f1c2a9e4b5d7c8e9f0a1/bitcoin/mainnet/addresses\n\nTEST-ONLY passphrase 7\n6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5\n\n{\"context\":\"yes\",\"data\":{\"item\":{\"label\":\"deposit-7\"}}}",
+        "signedStringBase64": "djIKMTc5NDIwMTAwMApQT1NUCi92YXVsdHMvNjYzMGYxYzJhOWU0YjVkN2M4ZTlmMGExL2JpdGNvaW4vbWFpbm5ldC9hZGRyZXNzZXMKClRFU1QtT05MWSBwYXNzcGhyYXNlIDcKNmYxYzJhOWUwYjVkNDdjOGE5ZTRmMGExYzJiM2Q0ZTUKCnsiY29udGV4dCI6InllcyIsImRhdGEiOnsiaXRlbSI6eyJsYWJlbCI6ImRlcG9zaXQtNyJ9fX0=",
+        "signature": "La64CSDA4Og43sVI9iYmI7kOk9bEsPDyjZ+394t2fWg="
+      }
+    },
+    {
+      "name": "no_nonce",
+      "description": "x-api-nonce not sent: an empty line. The SDK always sends one; the gateway accepts v2 without it for an API key without a key pair.",
+      "secret": "9PRj8ICIohJMpg==",
+      "request": {
+        "timestamp": "1794201000",
+        "method": "POST",
+        "path": "/vaults/6630f1c2a9e4b5d7c8e9f0a1/bitcoin/mainnet/addresses",
+        "apiVersion": "2026-03-20",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "",
+        "query": "",
+        "body": "{\"context\":\"yes\",\"data\":{\"item\":{\"label\":\"deposit-7\"}}}"
+      },
+      "expected": {
+        "signedString": "v2\n1794201000\nPOST\n/vaults/6630f1c2a9e4b5d7c8e9f0a1/bitcoin/mainnet/addresses\n2026-03-20\nTEST-ONLY passphrase 7\n\n\n{\"context\":\"yes\",\"data\":{\"item\":{\"label\":\"deposit-7\"}}}",
+        "signedStringBase64": "djIKMTc5NDIwMTAwMApQT1NUCi92YXVsdHMvNjYzMGYxYzJhOWU0YjVkN2M4ZTlmMGExL2JpdGNvaW4vbWFpbm5ldC9hZGRyZXNzZXMKMjAyNi0wMy0yMApURVNULU9OTFkgcGFzc3BocmFzZSA3CgoKeyJjb250ZXh0IjoieWVzIiwiZGF0YSI6eyJpdGVtIjp7ImxhYmVsIjoiZGVwb3NpdC03In19fQ==",
+        "signature": "KofVz60Lvjudyc/IdqvLl27nMi0xiT9IuE2w50tM8eA="
+      }
+    },
+    {
+      "name": "raw_query_as_sent",
+      "description": "The query string is signed exactly as sent: unsorted, a repeated name, percent-encoding untouched.",
+      "secret": "9PRj8ICIohJMpg==",
+      "request": {
+        "timestamp": "1794201000",
+        "method": "GET",
+        "path": "/vaults/main",
+        "apiVersion": "2026-03-20",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "0c9b8a7f6e5d4c3b2a1908f7e6d5c4b3",
+        "query": "offset=0&limit=10&label=deposit%20%E2%9C%93&label=a%2Bb",
+        "body": ""
+      },
+      "expected": {
+        "signedString": "v2\n1794201000\nGET\n/vaults/main\n2026-03-20\nTEST-ONLY passphrase 7\n0c9b8a7f6e5d4c3b2a1908f7e6d5c4b3\noffset=0&limit=10&label=deposit%20%E2%9C%93&label=a%2Bb\n",
+        "signedStringBase64": "djIKMTc5NDIwMTAwMApHRVQKL3ZhdWx0cy9tYWluCjIwMjYtMDMtMjAKVEVTVC1PTkxZIHBhc3NwaHJhc2UgNwowYzliOGE3ZjZlNWQ0YzNiMmExOTA4ZjdlNmQ1YzRiMwpvZmZzZXQ9MCZsaW1pdD0xMCZsYWJlbD1kZXBvc2l0JTIwJUUyJTlDJTkzJmxhYmVsPWElMkJiCg==",
+        "signature": "ZFwx704bVLDOT8FChTICX32HGjKooYulWFfnbmx5NFE="
+      }
+    },
+    {
+      "name": "query_with_question_mark",
+      "description": "Everything after the first \"?\" is the query, a later \"?\" included.",
+      "secret": "9PRj8ICIohJMpg==",
+      "request": {
+        "timestamp": "1794201000",
+        "method": "GET",
+        "path": "/vaults/main",
+        "apiVersion": "2026-03-20",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "0c9b8a7f6e5d4c3b2a1908f7e6d5c4b3",
+        "query": "label=a?b",
+        "body": ""
+      },
+      "expected": {
+        "signedString": "v2\n1794201000\nGET\n/vaults/main\n2026-03-20\nTEST-ONLY passphrase 7\n0c9b8a7f6e5d4c3b2a1908f7e6d5c4b3\nlabel=a?b\n",
+        "signedStringBase64": "djIKMTc5NDIwMTAwMApHRVQKL3ZhdWx0cy9tYWluCjIwMjYtMDMtMjAKVEVTVC1PTkxZIHBhc3NwaHJhc2UgNwowYzliOGE3ZjZlNWQ0YzNiMmExOTA4ZjdlNmQ1YzRiMwpsYWJlbD1hP2IK",
+        "signature": "/lGHGIrKkI/kTG2gfDjdJ2goZU/QhQgY/gZrdLbf3YY="
+      }
+    },
+    {
+      "name": "unicode_body",
+      "description": "The body is signed exactly as sent, as UTF-8: whitespace, newlines, key order and non-ASCII kept.",
+      "secret": "9PRj8ICIohJMpg==",
+      "request": {
+        "timestamp": "1794201000",
+        "method": "POST",
+        "path": "/vaults/6630f1c2a9e4b5d7c8e9f0a1/bitcoin/mainnet/addresses",
+        "apiVersion": "2026-03-20",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5",
+        "query": "",
+        "body": "{\n  \"data\": { \"item\": { \"label\": \"Сметка ✓ 東京\", \"amount\": \"0.10\" } },\n  \"context\": \"yes\"\n}"
+      },
+      "expected": {
+        "signedString": "v2\n1794201000\nPOST\n/vaults/6630f1c2a9e4b5d7c8e9f0a1/bitcoin/mainnet/addresses\n2026-03-20\nTEST-ONLY passphrase 7\n6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5\n\n{\n  \"data\": { \"item\": { \"label\": \"Сметка ✓ 東京\", \"amount\": \"0.10\" } },\n  \"context\": \"yes\"\n}",
+        "signedStringBase64": "djIKMTc5NDIwMTAwMApQT1NUCi92YXVsdHMvNjYzMGYxYzJhOWU0YjVkN2M4ZTlmMGExL2JpdGNvaW4vbWFpbm5ldC9hZGRyZXNzZXMKMjAyNi0wMy0yMApURVNULU9OTFkgcGFzc3BocmFzZSA3CjZmMWMyYTllMGI1ZDQ3YzhhOWU0ZjBhMWMyYjNkNGU1Cgp7CiAgImRhdGEiOiB7ICJpdGVtIjogeyAibGFiZWwiOiAi0KHQvNC10YLQutCwIOKckyDmnbHkuqwiLCAiYW1vdW50IjogIjAuMTAiIH0gfSwKICAiY29udGV4dCI6ICJ5ZXMiCn0=",
+        "signature": "QT5gZfPKT0OuFx0rmjF6bDue9Kvx2Y3TLxhabKCfcbI="
+      }
+    },
+    {
+      "name": "body_trailing_newline",
+      "description": "A body ending in a newline keeps it: the body is the last field and nothing follows it.",
+      "secret": "9PRj8ICIohJMpg==",
+      "request": {
+        "timestamp": "1794201000",
+        "method": "POST",
+        "path": "/vaults/6630f1c2a9e4b5d7c8e9f0a1/bitcoin/mainnet/addresses",
+        "apiVersion": "2026-03-20",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5",
+        "query": "",
+        "body": "{\"context\":\"yes\",\"data\":{\"item\":{\"label\":\"deposit-7\"}}}\n"
+      },
+      "expected": {
+        "signedString": "v2\n1794201000\nPOST\n/vaults/6630f1c2a9e4b5d7c8e9f0a1/bitcoin/mainnet/addresses\n2026-03-20\nTEST-ONLY passphrase 7\n6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5\n\n{\"context\":\"yes\",\"data\":{\"item\":{\"label\":\"deposit-7\"}}}\n",
+        "signedStringBase64": "djIKMTc5NDIwMTAwMApQT1NUCi92YXVsdHMvNjYzMGYxYzJhOWU0YjVkN2M4ZTlmMGExL2JpdGNvaW4vbWFpbm5ldC9hZGRyZXNzZXMKMjAyNi0wMy0yMApURVNULU9OTFkgcGFzc3BocmFzZSA3CjZmMWMyYTllMGI1ZDQ3YzhhOWU0ZjBhMWMyYjNkNGU1Cgp7ImNvbnRleHQiOiJ5ZXMiLCJkYXRhIjp7Iml0ZW0iOnsibGFiZWwiOiJkZXBvc2l0LTcifX19Cg==",
+        "signature": "QMh9XqFUFmlIcpkL7MNrZ0psinDt6vy0f0Z0xzLRVP8="
+      }
+    },
+    {
+      "name": "v2_path_prefix",
+      "description": "The path is signed as sent, with the /v2 prefix when the client calls through it.",
+      "secret": "9PRj8ICIohJMpg==",
+      "request": {
+        "timestamp": "1794201000",
+        "method": "POST",
+        "path": "/v2/vaults/6630f1c2a9e4b5d7c8e9f0a1/bitcoin/mainnet/addresses",
+        "apiVersion": "2026-03-20",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5",
+        "query": "",
+        "body": "{\"context\":\"yes\",\"data\":{\"item\":{\"label\":\"deposit-7\"}}}"
+      },
+      "expected": {
+        "signedString": "v2\n1794201000\nPOST\n/v2/vaults/6630f1c2a9e4b5d7c8e9f0a1/bitcoin/mainnet/addresses\n2026-03-20\nTEST-ONLY passphrase 7\n6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5\n\n{\"context\":\"yes\",\"data\":{\"item\":{\"label\":\"deposit-7\"}}}",
+        "signedStringBase64": "djIKMTc5NDIwMTAwMApQT1NUCi92Mi92YXVsdHMvNjYzMGYxYzJhOWU0YjVkN2M4ZTlmMGExL2JpdGNvaW4vbWFpbm5ldC9hZGRyZXNzZXMKMjAyNi0wMy0yMApURVNULU9OTFkgcGFzc3BocmFzZSA3CjZmMWMyYTllMGI1ZDQ3YzhhOWU0ZjBhMWMyYjNkNGU1Cgp7ImNvbnRleHQiOiJ5ZXMiLCJkYXRhIjp7Iml0ZW0iOnsibGFiZWwiOiJkZXBvc2l0LTcifX19",
+        "signature": "nqPbSpML0gAKlDKocNuzcaXWpfhb8d5cJ3ZikUU3x8Q="
+      }
+    },
+    {
+      "name": "put_update_vault_account",
+      "description": "PUT with a body.",
+      "secret": "9PRj8ICIohJMpg==",
+      "request": {
+        "timestamp": "1794201000",
+        "method": "PUT",
+        "path": "/vaults/6630f1c2a9e4b5d7c8e9f0a1/vault-accounts/6630f1c2a9e4b5d7c8e9f0e2/edit",
+        "apiVersion": "2026-03-20",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5",
+        "query": "",
+        "body": "{\"data\":{\"item\":{\"name\":\"Treasury\",\"isFavoriteInDashboard\":true}}}"
+      },
+      "expected": {
+        "signedString": "v2\n1794201000\nPUT\n/vaults/6630f1c2a9e4b5d7c8e9f0a1/vault-accounts/6630f1c2a9e4b5d7c8e9f0e2/edit\n2026-03-20\nTEST-ONLY passphrase 7\n6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5\n\n{\"data\":{\"item\":{\"name\":\"Treasury\",\"isFavoriteInDashboard\":true}}}",
+        "signedStringBase64": "djIKMTc5NDIwMTAwMApQVVQKL3ZhdWx0cy82NjMwZjFjMmE5ZTRiNWQ3YzhlOWYwYTEvdmF1bHQtYWNjb3VudHMvNjYzMGYxYzJhOWU0YjVkN2M4ZTlmMGUyL2VkaXQKMjAyNi0wMy0yMApURVNULU9OTFkgcGFzc3BocmFzZSA3CjZmMWMyYTllMGI1ZDQ3YzhhOWU0ZjBhMWMyYjNkNGU1Cgp7ImRhdGEiOnsiaXRlbSI6eyJuYW1lIjoiVHJlYXN1cnkiLCJpc0Zhdm9yaXRlSW5EYXNoYm9hcmQiOnRydWV9fX0=",
+        "signature": "X7y7km+koL03Ju+0HFiyK3g6H1a1xBvgE3v4+jh+7KY="
+      }
+    },
+    {
+      "name": "percent_encoded_path",
+      "description": "A path parameter percent-encoded on the request line is signed in that form, not decoded.",
+      "secret": "9PRj8ICIohJMpg==",
+      "request": {
+        "timestamp": "1794201000",
+        "method": "GET",
+        "path": "/vaults/6630f1c2a9e4b5d7c8e9f0a1/addresses/r%20Test%2Fx/balance",
+        "apiVersion": "2026-03-20",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "0c9b8a7f6e5d4c3b2a1908f7e6d5c4b3",
+        "query": "limit=1",
+        "body": ""
+      },
+      "expected": {
+        "signedString": "v2\n1794201000\nGET\n/vaults/6630f1c2a9e4b5d7c8e9f0a1/addresses/r%20Test%2Fx/balance\n2026-03-20\nTEST-ONLY passphrase 7\n0c9b8a7f6e5d4c3b2a1908f7e6d5c4b3\nlimit=1\n",
+        "signedStringBase64": "djIKMTc5NDIwMTAwMApHRVQKL3ZhdWx0cy82NjMwZjFjMmE5ZTRiNWQ3YzhlOWYwYTEvYWRkcmVzc2VzL3IlMjBUZXN0JTJGeC9iYWxhbmNlCjIwMjYtMDMtMjAKVEVTVC1PTkxZIHBhc3NwaHJhc2UgNwowYzliOGE3ZjZlNWQ0YzNiMmExOTA4ZjdlNmQ1YzRiMwpsaW1pdD0xCg==",
+        "signature": "P7v+e0pjCn8sP5qkZKES4KatWWqG5KxZwQdnE33zeYY="
+      }
+    },
+    {
+      "name": "secret_without_padding",
+      "description": "The same secret without its \"==\" padding gives the same signature: the padding is optional.",
+      "secret": "9PRj8ICIohJMpg",
+      "request": {
+        "timestamp": "1794201000",
+        "method": "POST",
+        "path": "/vaults/6630f1c2a9e4b5d7c8e9f0a1/bitcoin/mainnet/addresses",
+        "apiVersion": "2026-03-20",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5",
+        "query": "",
+        "body": "{\"context\":\"yes\",\"data\":{\"item\":{\"label\":\"deposit-7\"}}}"
+      },
+      "expected": {
+        "signedString": "v2\n1794201000\nPOST\n/vaults/6630f1c2a9e4b5d7c8e9f0a1/bitcoin/mainnet/addresses\n2026-03-20\nTEST-ONLY passphrase 7\n6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5\n\n{\"context\":\"yes\",\"data\":{\"item\":{\"label\":\"deposit-7\"}}}",
+        "signedStringBase64": "djIKMTc5NDIwMTAwMApQT1NUCi92YXVsdHMvNjYzMGYxYzJhOWU0YjVkN2M4ZTlmMGExL2JpdGNvaW4vbWFpbm5ldC9hZGRyZXNzZXMKMjAyNi0wMy0yMApURVNULU9OTFkgcGFzc3BocmFzZSA3CjZmMWMyYTllMGI1ZDQ3YzhhOWU0ZjBhMWMyYjNkNGU1Cgp7ImNvbnRleHQiOiJ5ZXMiLCJkYXRhIjp7Iml0ZW0iOnsibGFiZWwiOiJkZXBvc2l0LTcifX19",
+        "signature": "RihhIbKRrSm28lZRxYx7BjMu2JgwSAL76hXvJ5X2uiE="
+      }
+    },
+    {
+      "name": "secret_32_bytes",
+      "description": "A longer secret (32 bytes).",
+      "secret": "ckFHFfeH1gHwaWRRZ0qpZzGiLBjJGPpeq2E9YOZwmQs=",
+      "request": {
+        "timestamp": "1794201000",
+        "method": "POST",
+        "path": "/vaults/6630f1c2a9e4b5d7c8e9f0a1/bitcoin/mainnet/addresses",
+        "apiVersion": "2026-03-20",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5",
+        "query": "",
+        "body": "{\"context\":\"yes\",\"data\":{\"item\":{\"label\":\"deposit-7\"}}}"
+      },
+      "expected": {
+        "signedString": "v2\n1794201000\nPOST\n/vaults/6630f1c2a9e4b5d7c8e9f0a1/bitcoin/mainnet/addresses\n2026-03-20\nTEST-ONLY passphrase 7\n6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5\n\n{\"context\":\"yes\",\"data\":{\"item\":{\"label\":\"deposit-7\"}}}",
+        "signedStringBase64": "djIKMTc5NDIwMTAwMApQT1NUCi92YXVsdHMvNjYzMGYxYzJhOWU0YjVkN2M4ZTlmMGExL2JpdGNvaW4vbWFpbm5ldC9hZGRyZXNzZXMKMjAyNi0wMy0yMApURVNULU9OTFkgcGFzc3BocmFzZSA3CjZmMWMyYTllMGI1ZDQ3YzhhOWU0ZjBhMWMyYjNkNGU1Cgp7ImNvbnRleHQiOiJ5ZXMiLCJkYXRhIjp7Iml0ZW0iOnsibGFiZWwiOiJkZXBvc2l0LTcifX19",
+        "signature": "tE5x/l+VJ7dygzx9A2Qg44qk2+m5m/AFYM3IVQFKs5I="
+      }
+    },
+    {
+      "name": "secret_empty",
+      "description": "An empty secret would be an HMAC key anyone can sign with.",
+      "secret": "",
+      "request": {
+        "timestamp": "1794201000",
+        "method": "POST",
+        "path": "/vaults/6630f1c2a9e4b5d7c8e9f0a1/bitcoin/mainnet/addresses",
+        "apiVersion": "2026-03-20",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5",
+        "query": "",
+        "body": "{\"context\":\"yes\",\"data\":{\"item\":{\"label\":\"deposit-7\"}}}"
+      },
+      "expected": {
+        "error": "invalid_api_secret"
+      }
+    },
+    {
+      "name": "secret_only_padding",
+      "description": "\"====\" decodes to zero bytes.",
+      "secret": "====",
+      "request": {
+        "timestamp": "1794201000",
+        "method": "POST",
+        "path": "/vaults/6630f1c2a9e4b5d7c8e9f0a1/bitcoin/mainnet/addresses",
+        "apiVersion": "2026-03-20",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5",
+        "query": "",
+        "body": "{\"context\":\"yes\",\"data\":{\"item\":{\"label\":\"deposit-7\"}}}"
+      },
+      "expected": {
+        "error": "invalid_api_secret"
+      }
+    },
+    {
+      "name": "secret_not_base64",
+      "description": "Characters outside the base64 alphabet. (The gateway's lenient decoder would skip them; the SDK refuses rather than guess.)",
+      "secret": "not base64!",
+      "request": {
+        "timestamp": "1794201000",
+        "method": "POST",
+        "path": "/vaults/6630f1c2a9e4b5d7c8e9f0a1/bitcoin/mainnet/addresses",
+        "apiVersion": "2026-03-20",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5",
+        "query": "",
+        "body": "{\"context\":\"yes\",\"data\":{\"item\":{\"label\":\"deposit-7\"}}}"
+      },
+      "expected": {
+        "error": "invalid_api_secret"
+      }
+    },
+    {
+      "name": "secret_url_safe_alphabet",
+      "description": "The URL-safe alphabet (\"-\", \"_\") is not the one Vaultody issues secrets in.",
+      "secret": "ab-_cd-_ef-_gh==",
+      "request": {
+        "timestamp": "1794201000",
+        "method": "POST",
+        "path": "/vaults/6630f1c2a9e4b5d7c8e9f0a1/bitcoin/mainnet/addresses",
+        "apiVersion": "2026-03-20",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5",
+        "query": "",
+        "body": "{\"context\":\"yes\",\"data\":{\"item\":{\"label\":\"deposit-7\"}}}"
+      },
+      "expected": {
+        "error": "invalid_api_secret"
+      }
+    },
+    {
+      "name": "secret_with_newline",
+      "description": "A trailing newline, as from a file read whole: refused, never trimmed.",
+      "secret": "9PRj8ICIohJMpg==\n",
+      "request": {
+        "timestamp": "1794201000",
+        "method": "POST",
+        "path": "/vaults/6630f1c2a9e4b5d7c8e9f0a1/bitcoin/mainnet/addresses",
+        "apiVersion": "2026-03-20",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5",
+        "query": "",
+        "body": "{\"context\":\"yes\",\"data\":{\"item\":{\"label\":\"deposit-7\"}}}"
+      },
+      "expected": {
+        "error": "invalid_api_secret"
+      }
+    }
+  ]
+}

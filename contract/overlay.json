@@ -1,0 +1,116 @@
+{
+  "about": "What the SDKs need about each operation that the OpenAPI document does not say. Keyed by operationId; scripts/coverage.mjs fails when an operation of the contract has no entry here, or an entry names no operation.",
+  "fields": {
+    "retry": "read: retried with backoff and re-signed on every attempt (GET, and the POSTs that change nothing: validateAddress, estimateTransactionFeeByAssetId, validateUtxoTransfer). write: never re-signed with a new nonce once it may have reached the gateway (see test-vectors/retry-v1.json).",
+    "cursorField": "cursor-paged lists: the item field whose value of the last item on a page is sent as startingAfter for the next page. null while it is not known (getAddressBalance: the docs say only 'ID of the last item').",
+    "paging": "offset: offset-paged (limit, offset, total), only listApiKeySigningKeys."
+  },
+  "operations": {
+    "addAssetToVaultAccount": {
+      "retry": "write"
+    },
+    "createBatchTransactionRequest": {
+      "retry": "write"
+    },
+    "createMultipleTransfer": {
+      "retry": "write"
+    },
+    "createSingleTransfer": {
+      "retry": "write"
+    },
+    "createTronContractInteractionRequest": {
+      "retry": "write"
+    },
+    "createUtxoTransfer": {
+      "retry": "write"
+    },
+    "createVaultAccount": {
+      "retry": "write"
+    },
+    "decodeXrpAddress": {
+      "retry": "read"
+    },
+    "encodeXrpAddress": {
+      "retry": "read"
+    },
+    "estimateTransactionFeeByAssetId": {
+      "retry": "read"
+    },
+    "gasSponsorshipTransfer": {
+      "retry": "write"
+    },
+    "generateDepositAddress": {
+      "retry": "write"
+    },
+    "getAddressBalance": {
+      "retry": "read",
+      "cursorField": null
+    },
+    "getTransactionDetails": {
+      "retry": "read"
+    },
+    "getTransactionRequestDetails": {
+      "retry": "read"
+    },
+    "getVaultAccountById": {
+      "retry": "read"
+    },
+    "listAddressesByVaultAccountId": {
+      "retry": "read",
+      "cursorField": "addressId"
+    },
+    "listApiKeySigningKeys": {
+      "retry": "read",
+      "paging": "offset"
+    },
+    "listAssetsByVault": {
+      "retry": "read"
+    },
+    "listAssetsByVaultAccountId": {
+      "retry": "read",
+      "cursorField": "assetId"
+    },
+    "listSupportedAssets": {
+      "retry": "read",
+      "cursorField": "assetId"
+    },
+    "listTransactionsByVault": {
+      "retry": "read",
+      "cursorField": "id"
+    },
+    "listTransactionsByVaultAccount": {
+      "retry": "read",
+      "cursorField": "id"
+    },
+    "listUtxos": {
+      "retry": "read",
+      "cursorField": "utxoId"
+    },
+    "listVaultAccounts": {
+      "retry": "read",
+      "cursorField": "vaultAccountId"
+    },
+    "listVaults": {
+      "retry": "read",
+      "cursorField": "id"
+    },
+    "listVaultsByAssetId": {
+      "retry": "read"
+    },
+    "tronResourceManagement": {
+      "retry": "write"
+    },
+    "tronResourceOverview": {
+      "retry": "read"
+    },
+    "updateVaultAccount": {
+      "retry": "write"
+    },
+    "validateAddress": {
+      "retry": "read"
+    },
+    "validateUtxoTransfer": {
+      "retry": "read"
+    }
+  }
+}

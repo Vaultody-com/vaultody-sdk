@@ -1,0 +1,372 @@
+name: release
+
+# Manual only: publishes one version of every package. The build holds no secret and nothing it writes is
+# run by a job that can publish, and each registry has its own protected environment. The step-by-step,
+# who approves, and the order against the production root key: docs/RELEASING.md.
+#
+#   preflight       scripts/release/guard.mjs: the run is on the signed tag v<VERSION> on main, the
+#                   repository is public, the versions agree, the embedded roots are valid, identical in
+#                   every language and not test roots, the packages are ready (licence, not private,
+#                   release notes, npm repository); a stable version also needs the production root, named
+#                   by the run, and no operation still pending.
+#   test            test.yml: every language's tests and vectors, the coverage check, the vector checks,
+#                   the type check, the pin-file interop.
+#   secret-scan     secret-scan.yml: gitleaks over the whole history.
+#   build           scripts/release/pack.sh, check-packages.mjs --release, gitleaks over the unpacked
+#                   packages. No secret, no id-token.
+#   attest          SHA256SUMS and one build provenance attestation over every package. No checkout; it
+#                   runs nothing the build wrote.
+#   publish-npm     environment npm-release: @vaultody/verify, then @vaultody/sdk, by trusted publishing
+#                   (OIDC) with provenance; dist-tag next for a release candidate. No checkout, no install.
+#                   A version on npm already is skipped when npm holds the same tarball, and fails otherwise.
+#   publish-pypi    environment pypi-release: vaultody-verify, then vaultody-sdk, by trusted publishing
+#                   (OIDC) with PEP 740 attestations; TestPyPI instead with what=testpypi.
+#   publish-php     environment packagist-release: php/ of the tag and the tag itself to the read-only
+#                   vaultody-sdk-php mirror (scripts/release/push-php-mirror.sh, the mirror's deploy key);
+#                   Packagist reads the tag from there.
+#   github-release  the release of the tag: notes from CHANGELOG.md, every package, SHA256SUMS and the
+#                   attestation bundle.
+#
+# Needs (set up by an organisation admin): a public repository; the environments npm-release,
+# pypi-release and packagist-release, each with required reviewers, self-review prevented and deployments
+# from v* tags only; the trusted publishers on npm and PyPI; the secret SDK_PHP_MIRROR_DEPLOY_KEY on
+# packagist-release; the release managers' SSH signing keys in .github/release-signers. Missing what it
+# needs, a job stops before it publishes anything.
+#
+# A version already on npm or PyPI is skipped, and the mirror's tag is left alone when it holds the same
+# tree, so "Re-run failed jobs" finishes a run that stopped half way, with the same packages.
+#
+# Actions are pinned to full commit SHAs. Inputs reach scripts through the environment, never inline.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'The version, exactly as in VERSION: X.Y.Z-rc.N (release candidate) or X.Y.Z (stable). Run the workflow on its tag v<version>.'
+        required: true
+        type: string
+      what:
+        description: 'all = npm, PyPI, Packagist and the GitHub release; build-only = the checked, attested packages as an artifact (the first npm publish by hand); testpypi = the Python packages to TestPyPI only'
+        required: true
+        default: all
+        type: choice
+        options: [all, build-only, testpypi]
+      root_fingerprint:
+        description: 'Stable releases: the production root fingerprint as published to clients; it must equal the embedded current root'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  SDK_PHP_MIRROR: Vaultody-com/vaultody-sdk-php
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.guard.outputs.version }}
+      prerelease: ${{ steps.guard.outputs.prerelease }}
+      dist-tag: ${{ steps.guard.outputs.dist-tag }}
+    steps:
+      - name: Only on a release tag, only from a public repository
+        env:
+          VISIBILITY: ${{ github.event.repository.visibility }}
+        run: |
+          if [ "$VISIBILITY" != public ]; then
+            echo "::error::This repository is ${VISIBILITY:-not public}. npm provenance and GitHub attestations need a public repository, and nothing is published without them. Make it public first. Nothing was published."
+            exit 1
+          fi
+          case "$GITHUB_REF" in
+            refs/tags/v*) ;;
+            *) echo "::error::A release runs on its signed tag v<version> (Use workflow from: Tags), not on $GITHUB_REF. Nothing was published."; exit 1 ;;
+          esac
+      # Every branch and tag: the guard checks the tag against main.
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # actions/checkout can store the annotated tag it runs on as a lightweight one, without its signature;
+      # fetch the tag object itself.
+      - name: The tag as GitHub has it
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          auth="$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" \
+            fetch --no-tags --force origin "+$GITHUB_REF:$GITHUB_REF"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - id: guard
+        name: Release guard
+        env:
+          VERSION_INPUT: ${{ inputs.version }}
+          ROOT_FINGERPRINT: ${{ inputs.root_fingerprint }}
+          VISIBILITY: ${{ github.event.repository.visibility }}
+        run: >-
+          node scripts/release/guard.mjs --version "$VERSION_INPUT" --ref "$GITHUB_REF" --sha "$GITHUB_SHA"
+          --repository "$GITHUB_REPOSITORY" --visibility "$VISIBILITY" --root-fingerprint "$ROOT_FINGERPRINT"
+
+  test:
+    needs: preflight
+    uses: ./.github/workflows/test.yml
+
+  secret-scan:
+    needs: preflight
+    uses: ./.github/workflows/secret-scan.yml
+
+  build:
+    needs: [preflight, test, secret-scan]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Only on the release tag
+        if: github.ref != format('refs/tags/v{0}', needs.preflight.outputs.version)
+        run: exit 1
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      # python3 and composer as the runner image ships them; the Python build tools come pinned with hashes.
+      - name: Build every package
+        run: scripts/release/pack.sh "$RUNNER_TEMP/dist"
+      - name: What each package ships, ready to publish
+        run: node scripts/release/check-packages.mjs "$RUNNER_TEMP/dist" --release --extract "$RUNNER_TEMP/unpacked"
+      - name: No secret in any package
+        run: scripts/secret-scan.sh --dir "$RUNNER_TEMP/unpacked"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: packages
+          path: ${{ runner.temp }}/dist
+          if-no-files-found: error
+          retention-days: 7
+
+  attest:
+    needs: [preflight, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: packages
+          path: release
+      - name: SHA256SUMS
+        working-directory: release
+        run: |
+          find . -type f | sed 's|^\./||' | LC_ALL=C sort | xargs sha256sum > "$RUNNER_TEMP/SHA256SUMS"
+          mv "$RUNNER_TEMP/SHA256SUMS" SHA256SUMS
+          cat SHA256SUMS
+      - id: attest
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-checksums: release/SHA256SUMS
+      - name: The attestation bundle beside the packages
+        env:
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: cp "$BUNDLE" release/provenance.sigstore.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release
+          path: release
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-npm:
+    needs: [preflight, attest]
+    if: inputs.what == 'all'
+    runs-on: ubuntu-latest
+    environment:
+      name: npm-release
+      url: https://www.npmjs.com/package/@vaultody/sdk
+    permissions:
+      contents: read
+      # trusted publishing: npm exchanges the workflow's OIDC token for a one-time publish token, and
+      # records which workflow run built each version (provenance)
+      id-token: write
+    steps:
+      - name: Only on the release tag, only from a public repository
+        if: github.ref != format('refs/tags/v{0}', needs.preflight.outputs.version) || github.event.repository.visibility != 'public'
+        run: |
+          echo "::error::npm provenance needs a public repository and the release tag. Nothing was published."
+          exit 1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+      - name: Preflight
+        run: |
+          v="$(npm --version)"
+          if ! node -e 'const [a, b, c] = process.argv[1].split(".").map(Number); process.exit(a > 11 || (a === 11 && (b > 5 || (b === 5 && c >= 1))) ? 0 : 1)' "$v"; then
+            echo "::error::npm $v: trusted publishing needs npm 11.5.1 or later. Nothing was published."
+            exit 1
+          fi
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release
+          path: release
+      - name: The files the attestation names
+        working-directory: release
+        run: sha256sum --check --strict SHA256SUMS
+      # No checkout and no install: npm publishes the tarballs the build packed, @vaultody/verify first,
+      # because @vaultody/sdk depends on that exact version.
+      - name: Publish to npm, each version not on npm yet, with provenance
+        env:
+          VERSION: ${{ needs.preflight.outputs.version }}
+          DIST_TAG: ${{ needs.preflight.outputs.dist-tag }}
+        run: |
+          set -eu
+          # shellcheck disable=SC2016 # the node script is single-quoted on purpose
+          for name in verify sdk; do
+            t="release/npm/vaultody-$name-$VERSION.tgz"
+            tar -xOzf "$t" package/package.json | node -e '
+              let s = ""; process.stdin.on("data", d => (s += d)).on("end", () => {
+                const p = JSON.parse(s);
+                if (p.name !== `@vaultody/${process.argv[1]}` || p.version !== process.argv[2] || p.private === true) {
+                  console.error(`::error::${process.argv[1]}: ${p.name}@${p.version}${p.private === true ? " (private)" : ""} is not the package to publish`);
+                  process.exit(1);
+                }
+              });' "$name" "$VERSION"
+            # A version on npm already (published by hand the first time, or by an earlier attempt) is
+            # skipped, but only when npm holds exactly this tarball.
+            published="$(npm view "@vaultody/$name@$VERSION" dist.integrity 2>/dev/null || true)"
+            if [ -z "$published" ]; then
+              npm publish "$t" --access public --tag "$DIST_TAG" --provenance
+            elif [ "$published" = "sha512-$(openssl dgst -sha512 -binary "$t" | base64 -w0)" ]; then
+              echo "@vaultody/$name@$VERSION is on npm already, with this tarball"
+            else
+              echo "::error::npm has another tarball for @vaultody/$name@$VERSION than this build. Nothing more was published."
+              exit 1
+            fi
+          done
+
+  publish-pypi:
+    needs: [preflight, attest]
+    if: inputs.what == 'all' || inputs.what == 'testpypi'
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi-release
+      url: ${{ inputs.what == 'testpypi' && 'https://test.pypi.org/project/vaultody-sdk/' || 'https://pypi.org/project/vaultody-sdk/' }}
+    permissions:
+      contents: read
+      # trusted publishing and PEP 740 attestations
+      id-token: write
+    steps:
+      - name: Only on the release tag
+        if: github.ref != format('refs/tags/v{0}', needs.preflight.outputs.version)
+        run: exit 1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release
+          path: release
+      - name: The files the attestation names
+        working-directory: release
+        run: sha256sum --check --strict SHA256SUMS
+      # vaultody-verify first: vaultody-sdk pins that exact version.
+      - name: vaultody-verify
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+        with:
+          packages-dir: release/pypi/vaultody-verify/
+          repository-url: ${{ inputs.what == 'testpypi' && 'https://test.pypi.org/legacy/' || 'https://upload.pypi.org/legacy/' }}
+          skip-existing: true
+          attestations: true
+          print-hash: true
+      - name: vaultody-sdk
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+        with:
+          packages-dir: release/pypi/vaultody-sdk/
+          repository-url: ${{ inputs.what == 'testpypi' && 'https://test.pypi.org/legacy/' || 'https://upload.pypi.org/legacy/' }}
+          skip-existing: true
+          attestations: true
+          print-hash: true
+
+  publish-php:
+    needs: [preflight, attest]
+    if: inputs.what == 'all'
+    runs-on: ubuntu-latest
+    environment:
+      name: packagist-release
+      url: https://packagist.org/packages/vaultody/sdk
+    steps:
+      - name: Only on the release tag
+        if: github.ref != format('refs/tags/v{0}', needs.preflight.outputs.version)
+        run: exit 1
+      - name: Preflight
+        env:
+          DEPLOY_KEY: ${{ secrets.SDK_PHP_MIRROR_DEPLOY_KEY }}
+        run: |
+          if [ -z "$DEPLOY_KEY" ]; then
+            echo "::error::The secret SDK_PHP_MIRROR_DEPLOY_KEY is not set on the packagist-release environment. Nothing was published."
+            exit 1
+          fi
+      # php/ and the push script come from the tag the preflight checked, never from the build.
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: php/ and the tag to the mirror
+        env:
+          DEPLOY_KEY: ${{ secrets.SDK_PHP_MIRROR_DEPLOY_KEY }}
+          VERSION: ${{ needs.preflight.outputs.version }}
+        run: |
+          key="$RUNNER_TEMP/mirror-deploy-key"
+          trap 'rm -f "$key"' EXIT
+          (umask 077 && printf '%s\n' "$DEPLOY_KEY" > "$key")
+          # GitHub's published SSH host key (api.github.com/meta), so the push goes to GitHub and nowhere else.
+          printf 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl\n' > "$RUNNER_TEMP/known_hosts"
+          export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$RUNNER_TEMP/known_hosts"
+          scripts/release/push-php-mirror.sh "$VERSION" "git@github.com:$SDK_PHP_MIRROR.git"
+
+  github-release:
+    needs: [preflight, attest, publish-npm, publish-pypi, publish-php]
+    if: inputs.what == 'all'
+    runs-on: ubuntu-latest
+    permissions:
+      # the release of the existing tag; the workflow never creates a tag here
+      contents: write
+    steps:
+      - name: Only on the release tag
+        if: github.ref != format('refs/tags/v{0}', needs.preflight.outputs.version)
+        run: exit 1
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          sparse-checkout: CHANGELOG.md
+          sparse-checkout-cone-mode: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release
+          path: release
+      - name: The release notes, from CHANGELOG.md
+        env:
+          VERSION: ${{ needs.preflight.outputs.version }}
+        run: |
+          awk -v v="$VERSION" '
+            /^## / { inside = ($2 == v || $2 == "[" v "]"); next }
+            inside { print }' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          if ! grep -q '[^[:space:]]' "$RUNNER_TEMP/notes.md"; then
+            echo "::error::CHANGELOG.md has no text under \"## $VERSION\"."
+            exit 1
+          fi
+      - name: The GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.preflight.outputs.version }}
+          PRERELEASE: ${{ needs.preflight.outputs.prerelease }}
+        run: |
+          if gh release view "v$VERSION" > /dev/null 2>&1; then
+            echo "::error::A GitHub release v$VERSION exists already; its files are left as they are."
+            exit 1
+          fi
+          flags=()
+          if [ "$PRERELEASE" = true ]; then flags=(--prerelease --latest=false); fi
+          gh release create "v$VERSION" --verify-tag --title "v$VERSION" --notes-file "$RUNNER_TEMP/notes.md" "${flags[@]}" \
+            release/npm/*.tgz release/pypi/*/* release/packagist/*.zip release/SHA256SUMS release/provenance.sigstore.json

@@ -1,0 +1,42 @@
+name: release-dry-run
+
+# Builds every package exactly as the release workflow does, on every push and pull request, and checks
+# what each one ships; publishes nothing (docs/RELEASING.md).
+#
+#   - the release guard as a report: what a release of this commit would refuse (private packages, no
+#     release notes, the production root, ...); it fails only on what is wrong on every commit (versions that
+#     disagree, an embedded root that is invalid, differs between the languages or is a test root);
+#   - scripts/release/pack.sh: npm pack, python -m build + twine check, composer validate + composer archive;
+#   - scripts/release/check-packages.mjs: the files of each package (no tests, vectors or secrets; the
+#     sources, README, LICENSE and manifest; the version), with what the first release changes (the
+#     private markers) as a TODO;
+#   - gitleaks over the unpacked packages, with its default rules and no allow-list.
+#
+# No secrets; actions pinned to full commit SHAs, as in test.yml.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  release-dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: What a release of this commit would refuse
+        run: node scripts/release/guard.mjs --report
+      # python3 and composer as the runner image ships them; the Python build tools come pinned with hashes.
+      - name: Build every package
+        run: scripts/release/pack.sh "$RUNNER_TEMP/dist"
+      - name: What each package ships
+        run: node scripts/release/check-packages.mjs "$RUNNER_TEMP/dist" --extract "$RUNNER_TEMP/unpacked"
+      - name: No secret in any package
+        run: scripts/secret-scan.sh --dir "$RUNNER_TEMP/unpacked"

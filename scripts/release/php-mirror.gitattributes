@@ -1,0 +1,7 @@
+# The vaultody-sdk-php mirror's .gitattributes, added by scripts/release/push-php-mirror.sh: what
+# GitHub's zip of a mirror tag (the download Packagist serves) leaves out. The tests need the shared test
+# vectors, which only Vaultody-com/vaultody-sdk has; bin/surface.php only feeds its coverage check.
+# Not in php/ itself, where it would also strip php/tests from GitHub's archives of this repository.
+/.gitattributes export-ignore
+/bin export-ignore
+/tests export-ignore

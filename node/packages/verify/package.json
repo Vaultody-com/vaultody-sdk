@@ -1,0 +1,32 @@
+{
+  "name": "@vaultody/verify",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Verify that Vaultody API responses and webhook deliveries came unchanged from Vaultody, sign API requests, and make and read request-signing key pairs. No network or storage; the vaultody command line ships with @vaultody/sdk.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Vaultody-com/vaultody-sdk.git",
+    "directory": "node/packages/verify"
+  },
+  "type": "commonjs",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./response": "./src/response.js",
+    "./keys": "./src/keys.js",
+    "./webhook": "./src/webhook.js",
+    "./address": "./src/address/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src/",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}

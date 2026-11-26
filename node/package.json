@@ -1,0 +1,15 @@
+{
+  "name": "vaultody-sdk-node",
+  "private": true,
+  "description": "The Node.js packages of the Vaultody SDK: @vaultody/verify (pure verification) and @vaultody/sdk.",
+  "workspaces": [
+    "packages/verify",
+    "packages/sdk"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "npm test --workspaces"
+  }
+}

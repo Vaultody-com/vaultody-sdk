@@ -1,0 +1,1217 @@
+{
+  "format": "vaultody vault keys file, v1",
+  "warning": "TEST-ONLY: the xpubs are public test values (vault-key-pins-v1.json); the root id is the TEST-ONLY root of v1.json.",
+  "source": {
+    "generator": "test-vectors/tools/generate-sdk-vectors.js",
+    "schema": "docs/vault-keys-file-v1.schema.json",
+    "doc": "docs/vault-keys-file.md"
+  },
+  "rules": {
+    "tag": "format is exactly \"vaultody vault keys v1\"; anything else (another version, another case, missing, not a string, a top level that is not an object) is unknown_format. No migration from earlier layouts.",
+    "layout": "{ format, origins: { origin: { responseSignature: null | { latchedAt, rootId: text | null }, vaults: { vaultId: pin }, audit: [ { vaultId, at, reason, removed } ] } } }; the latch's rootId is null when the signed answer that set it did not verify; pin = { vaultId, type: main|test, keys: { ECDSA: xpub|null, EDDSA: xpub|null } (at least one xpub), status: verified|unverified, firstSeenAt, verifiedAt, verification: null | { rootId, timestamp } }; verified ⇔ verifiedAt and verification set.",
+    "strict": "Every field is required and no other is allowed, at any level; anything that differs is malformed. A refused file is never treated as empty.",
+    "origin": "scheme://host[:port] (http or https), no path, no trailing slash: ^https?://[^/?#@\\s]+$",
+    "times": "Unix seconds, a JSON integer token (no fraction, no exponent), 0 to 2^53 − 1.",
+    "errors": "VaultKeyStoreError with code not_json (not strict UTF-8 JSON, a byte-order mark, empty), unknown_format, malformed, insecure_permissions (POSIX mode & 022), not_regular_file (a symbolic link, a directory), too_large (over 16 MiB). Checked in that order of the file first: regular file, mode, size, then the bytes.",
+    "canonical": "A writer writes UTF-8 with object keys sorted at every level, a two-space indent, \": \" after a key, \"/\" and non-ASCII characters unescaped, and a final newline: JSON.stringify(sorted, null, 2) + \"\\n\", Python json.dumps(indent=2, sort_keys=True, ensure_ascii=False) + \"\\n\".",
+    "storeErrors": "Besides the file codes above, VaultKeyStoreError has, the same in every language: unreadable (an I/O error reading), unwritable (it can't be written), locked (the lock was held for 10 s), invalid_pin (a pin or latch handed to the store that the file can't hold), store_conflict (a pin changed in the store between the client's read and its write, by another writer; nothing is returned, calling again reads afresh).",
+    "files": "A missing file is an empty store. Writes: directory 0700, a temporary file 0600 in it, synced, renamed over the file; a read-change-write holds <file>.lock, created exclusively (O_CREAT|O_EXCL, 0600) and removed afterwards; a lock older than 30 s is stale; a writer gives up after 10 s (locked). Readers take no lock."
+  },
+  "caseFormat": {
+    "valid": "{ name, text, expected: { origins } }: the text parses, and for each origin the store lists exactly its pins (sorted by vaultId) and returns its latch",
+    "invalid": "{ name, text | base64, expected: { error } }: refused with that code",
+    "files": "{ name, mode | symlinkTo | directory | absent, content: a valid case name or \"invalid:<name>\", posixOnly, expected: { origins } | { error } }: the file is set up so, then read through the file store",
+    "canonical": "{ name, document, text }: what every SDK writes for document, byte for byte"
+  },
+  "valid": [
+    {
+      "name": "empty",
+      "description": "No origin yet: what a store that has pinned nothing would hold.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {}\n}\n",
+      "expected": {
+        "origins": {}
+      }
+    },
+    {
+      "name": "tofu_pin",
+      "description": "One vault pinned from an unsigned answer (trust on first use); no latch.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "origins": {
+          "https://rest.vaultody.com": {
+            "responseSignature": null,
+            "vaults": {
+              "6630f1c2a9e4b5d7c8e9f0a1": {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "unverified",
+                "firstSeenAt": 1794200000,
+                "verifiedAt": null,
+                "verification": null
+              }
+            },
+            "audit": []
+          }
+        }
+      }
+    },
+    {
+      "name": "verified_pin_and_latch",
+      "description": "A verified pin and the latch, as after the first signed vault list.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "origins": {
+          "https://rest.vaultody.com": {
+            "responseSignature": {
+              "latchedAt": 1794201002,
+              "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df"
+            },
+            "vaults": {
+              "6630f1c2a9e4b5d7c8e9f0a1": {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "verified",
+                "firstSeenAt": 1794200000,
+                "verifiedAt": 1794201002,
+                "verification": {
+                  "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+                  "timestamp": 1794201000
+                }
+              }
+            },
+            "audit": []
+          }
+        }
+      }
+    },
+    {
+      "name": "two_origins",
+      "description": "Two origins: one signs (latch, a verified main pin, an unverified test pin with ECDSA only), one is a loopback test gateway (EDDSA only).",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "origins": {
+          "https://rest.vaultody.com": {
+            "responseSignature": {
+              "latchedAt": 1794201002,
+              "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df"
+            },
+            "vaults": {
+              "6630f1c2a9e4b5d7c8e9f0a1": {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "verified",
+                "firstSeenAt": 1794200000,
+                "verifiedAt": 1794201002,
+                "verification": {
+                  "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+                  "timestamp": 1794201000
+                }
+              },
+              "6630f1c2a9e4b5d7c8e9f0b2": {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0b2",
+                "type": "test",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": null
+                },
+                "status": "unverified",
+                "firstSeenAt": 1794200000,
+                "verifiedAt": null,
+                "verification": null
+              }
+            },
+            "audit": []
+          },
+          "http://127.0.0.1:8080": {
+            "responseSignature": null,
+            "vaults": {
+              "6630f1c2a9e4b5d7c8e9f0c3": {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0c3",
+                "type": "main",
+                "keys": {
+                  "ECDSA": null,
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "unverified",
+                "firstSeenAt": 1794200000,
+                "verifiedAt": null,
+                "verification": null
+              }
+            },
+            "audit": []
+          }
+        }
+      }
+    },
+    {
+      "name": "latch_only",
+      "description": "The latch set and no pin yet.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.example.test\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {},\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "origins": {
+          "https://rest.example.test": {
+            "responseSignature": {
+              "latchedAt": 1794201002,
+              "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df"
+            },
+            "vaults": {},
+            "audit": []
+          }
+        }
+      }
+    },
+    {
+      "name": "latch_unverified",
+      "description": "The latch set by a signed answer that did not verify (refused, or no root to check it with): rootId null.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": null\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "origins": {
+          "https://rest.vaultody.com": {
+            "responseSignature": {
+              "latchedAt": 1794201002,
+              "rootId": null
+            },
+            "vaults": {
+              "6630f1c2a9e4b5d7c8e9f0a1": {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "unverified",
+                "firstSeenAt": 1794200000,
+                "verifiedAt": null,
+                "verification": null
+              }
+            },
+            "audit": []
+          }
+        }
+      }
+    },
+    {
+      "name": "audit_entries",
+      "description": "Two audit entries: a pin replaced after an out-of-band check, and one removed.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        }\n      },\n      \"audit\": [\n        {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"at\": 1794300000,\n          \"reason\": \"xpub confirmed with Vaultody support, ticket TEST-1\",\n          \"removed\": false\n        },\n        {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"at\": 1794300100,\n          \"reason\": \"vault deleted\",\n          \"removed\": true\n        }\n      ]\n    }\n  }\n}\n",
+      "expected": {
+        "origins": {
+          "https://rest.vaultody.com": {
+            "responseSignature": null,
+            "vaults": {
+              "6630f1c2a9e4b5d7c8e9f0a1": {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "verified",
+                "firstSeenAt": 1794200000,
+                "verifiedAt": 1794201002,
+                "verification": {
+                  "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+                  "timestamp": 1794201000
+                }
+              }
+            },
+            "audit": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "at": 1794300000,
+                "reason": "xpub confirmed with Vaultody support, ticket TEST-1",
+                "removed": false
+              },
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0b2",
+                "at": 1794300100,
+                "reason": "vault deleted",
+                "removed": true
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "unicode_reason",
+      "description": "An audit reason in UTF-8 that is not ASCII.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": [\n        {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"at\": 0,\n          \"reason\": \"потвърдено ✓ 確認\",\n          \"removed\": false\n        }\n      ]\n    }\n  }\n}\n",
+      "expected": {
+        "origins": {
+          "https://rest.vaultody.com": {
+            "responseSignature": null,
+            "vaults": {
+              "6630f1c2a9e4b5d7c8e9f0a1": {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "unverified",
+                "firstSeenAt": 1794200000,
+                "verifiedAt": null,
+                "verification": null
+              }
+            },
+            "audit": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "at": 0,
+                "reason": "потвърдено ✓ 確認",
+                "removed": false
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "time_bounds",
+      "description": "Times at both bounds: 0 and 2^53 − 1.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 9007199254740991,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 0,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "origins": {
+          "https://rest.vaultody.com": {
+            "responseSignature": {
+              "latchedAt": 9007199254740991,
+              "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df"
+            },
+            "vaults": {
+              "6630f1c2a9e4b5d7c8e9f0a1": {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "unverified",
+                "firstSeenAt": 0,
+                "verifiedAt": null,
+                "verification": null
+              }
+            },
+            "audit": []
+          }
+        }
+      }
+    },
+    {
+      "name": "ipv6_origin",
+      "description": "A loopback IPv6 origin.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"http://[::1]:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "origins": {
+          "http://[::1]:8080": {
+            "responseSignature": null,
+            "vaults": {
+              "6630f1c2a9e4b5d7c8e9f0a1": {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "test",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": null
+                },
+                "status": "unverified",
+                "firstSeenAt": 1794200000,
+                "verifiedAt": null,
+                "verification": null
+              }
+            },
+            "audit": []
+          }
+        }
+      }
+    },
+    {
+      "name": "minified",
+      "description": "The verified_pin_and_latch content minified and with its keys in another order: readers do not require the canonical form.",
+      "text": "{\"origins\":{\"https://rest.vaultody.com\":{\"vaults\":{\"6630f1c2a9e4b5d7c8e9f0a1\":{\"verification\":{\"timestamp\":1794201000,\"rootId\":\"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"},\"verifiedAt\":1794201002,\"vaultId\":\"6630f1c2a9e4b5d7c8e9f0a1\",\"type\":\"main\",\"status\":\"verified\",\"keys\":{\"EDDSA\":\"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\",\"ECDSA\":\"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\"},\"firstSeenAt\":1794200000}},\"responseSignature\":{\"rootId\":\"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\"latchedAt\":1794201002},\"audit\":[]}},\"format\":\"vaultody vault keys v1\"}",
+      "expected": {
+        "origins": {
+          "https://rest.vaultody.com": {
+            "vaults": {
+              "6630f1c2a9e4b5d7c8e9f0a1": {
+                "verification": {
+                  "timestamp": 1794201000,
+                  "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df"
+                },
+                "verifiedAt": 1794201002,
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "status": "verified",
+                "keys": {
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH",
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8"
+                },
+                "firstSeenAt": 1794200000
+              }
+            },
+            "responseSignature": {
+              "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+              "latchedAt": 1794201002
+            },
+            "audit": []
+          }
+        }
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "empty_file",
+      "description": "An empty file.",
+      "text": "",
+      "expected": {
+        "error": "not_json"
+      }
+    },
+    {
+      "name": "syntax_error",
+      "description": "Not JSON.",
+      "text": "{\"format\": \"vaultody vault keys v1\", \"origins\": {",
+      "expected": {
+        "error": "not_json"
+      }
+    },
+    {
+      "name": "byte_order_mark",
+      "description": "A UTF-8 byte-order mark before the JSON.",
+      "text": "﻿{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {}\n}\n",
+      "expected": {
+        "error": "not_json"
+      }
+    },
+    {
+      "name": "invalid_utf8",
+      "description": "Bytes that are not UTF-8 inside a string (base64: the text holds 0xC3 0x28).",
+      "base64": "eyJmb3JtYXQiOiJ2YXVsdG9keSB2YXVsdCBrZXlzIHYxIiwib3JpZ2lucyI6eyJodHRwczovL3Jlc3QudmF1bHRvZHkuY29tIjp7InJlc3BvbnNlU2lnbmF0dXJlIjpudWxsLCJ2YXVsdHMiOnt9LCJhdWRpdCI6W3sidmF1bHRJZCI6ImEiLCJhdCI6MSwicmVhc29uIjoiwygiLCJyZW1vdmVkIjpmYWxzZX1dfX19Cg==",
+      "expected": {
+        "error": "not_json"
+      }
+    },
+    {
+      "name": "top_level_array",
+      "description": "The top level is an array.",
+      "text": "[]\n",
+      "expected": {
+        "error": "unknown_format"
+      }
+    },
+    {
+      "name": "top_level_null",
+      "description": "The top level is null.",
+      "text": "null\n",
+      "expected": {
+        "error": "unknown_format"
+      }
+    },
+    {
+      "name": "no_format",
+      "description": "No format tag.",
+      "text": "{\n  \"origins\": {}\n}\n",
+      "expected": {
+        "error": "unknown_format"
+      }
+    },
+    {
+      "name": "format_v2",
+      "description": "A version this SDK does not know.",
+      "text": "{\n  \"format\": \"vaultody vault keys v2\",\n  \"origins\": {}\n}\n",
+      "expected": {
+        "error": "unknown_format"
+      }
+    },
+    {
+      "name": "format_case",
+      "description": "The tag in another case.",
+      "text": "{\n  \"format\": \"Vaultody vault keys v1\",\n  \"origins\": {}\n}\n",
+      "expected": {
+        "error": "unknown_format"
+      }
+    },
+    {
+      "name": "format_not_string",
+      "description": "The tag is a number.",
+      "text": "{\n  \"format\": 1,\n  \"origins\": {}\n}\n",
+      "expected": {
+        "error": "unknown_format"
+      }
+    },
+    {
+      "name": "unknown_top_level_field",
+      "description": "An extra field next to format and origins.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {},\n  \"version\": 1\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "no_origins",
+      "description": "No origins.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\"\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "origins_array",
+      "description": "origins is an array.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": []\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "origin_without_scheme",
+      "description": "An origin key that is a host name.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"rest.vaultody.com\": {\n      \"responseSignature\": null,\n      \"vaults\": {},\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "origin_with_path",
+      "description": "An origin key with a path.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com/v2\": {\n      \"responseSignature\": null,\n      \"vaults\": {},\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "origin_trailing_slash",
+      "description": "An origin key with a trailing slash.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com/\": {\n      \"responseSignature\": null,\n      \"vaults\": {},\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "php_layout",
+      "description": "The layout PHP wrote before v1 was unified: pins and signedResponses.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"signedResponses\": true,\n      \"pins\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        }\n      }\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "python_latch_key",
+      "description": "The latch under the key Python used before: strict.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"vaults\": {},\n      \"strict\": {\n        \"since\": 1,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "no_audit",
+      "description": "An origin entry without audit (the layout Node wrote before).",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": null,\n      \"vaults\": {}\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "no_latch_key",
+      "description": "An origin entry without responseSignature.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"vaults\": {},\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "unknown_origin_field",
+      "description": "An extra field in an origin entry.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": [],\n      \"note\": \"x\"\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "origin_entry_null",
+      "description": "An origin entry that is null.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": null\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "vaults_array",
+      "description": "vaults is an empty array, not an object (what a JSON encoder that cannot tell them apart writes).",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": null,\n      \"vaults\": [],\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "latch_true",
+      "description": "The latch as a boolean.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": true,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "latch_no_root",
+      "description": "The latch without rootId.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "latch_empty_root",
+      "description": "The latch with an empty rootId.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "latch_root_number",
+      "description": "The latch with a rootId that is neither text nor null.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": 1\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "latch_extra_field",
+      "description": "The latch with a field more (Python wrote responseTimestamp before).",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n        \"responseTimestamp\": 1794201000\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "latch_time_string",
+      "description": "latchedAt as a string.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": \"1794201002\",\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "pin_under_other_id",
+      "description": "A pin stored under another vault id.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        },\n        \"other\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "bad_status",
+      "description": "A status that does not exist.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"trusted\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "verified_without_evidence",
+      "description": "verified with verification null.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": null\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "verified_without_time",
+      "description": "verified with verifiedAt null.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "unverified_with_evidence",
+      "description": "unverified with verifiedAt and verification set.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1\n          }\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "type_uppercase",
+      "description": "The vault type in uppercase.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"MAIN\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "type_unknown",
+      "description": "A vault type that is not main or test.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"smart\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "keys_missing_eddsa",
+      "description": "keys without EDDSA.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "keys_both_null",
+      "description": "keys with no xpub.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": null\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "keys_extra_algorithm",
+      "description": "keys with an algorithm the SDK does not pin.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\",\n            \"SCHNORR\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "xpub_empty",
+      "description": "An empty xpub.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "xpub_number",
+      "description": "An xpub that is a number.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": 1,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "pin_unknown_field",
+      "description": "A pin with a field more (Node wrote replaced on a pin before).",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          },\n          \"replaced\": {\n            \"reason\": \"x\",\n            \"previous\": \"present\"\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "pin_missing_field",
+      "description": "A pin without firstSeenAt.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "verification_extra_field",
+      "description": "verification with a field more.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000,\n            \"keyId\": \"k\"\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "verification_no_timestamp",
+      "description": "verification without timestamp.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "time_fraction",
+      "description": "firstSeenAt with a fraction.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000.5,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "time_integral_fraction",
+      "description": "firstSeenAt written as 1794200000.0: an integer value, but not an integer token.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000.0,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "time_exponent",
+      "description": "firstSeenAt written with an exponent.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1.7942e9,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "time_negative",
+      "description": "A negative firstSeenAt.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": -1,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "time_too_large",
+      "description": "A time above 2^53 − 1.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 9007199254740992,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "time_string",
+      "description": "firstSeenAt as a string.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": \"1794200000\",\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "audit_object",
+      "description": "audit is an object.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": {}\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "audit_entry_extra_field",
+      "description": "An audit entry with a field more.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": [\n        {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"at\": 1,\n          \"reason\": \"r\",\n          \"removed\": false,\n          \"by\": \"admin\"\n        }\n      ]\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "audit_removed_not_boolean",
+      "description": "removed is not a boolean.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": [\n        {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"at\": 1,\n          \"reason\": \"r\",\n          \"removed\": 0\n        }\n      ]\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    },
+    {
+      "name": "audit_blank_reason",
+      "description": "A reason of spaces only.",
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": 1794201002,\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          }\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"type\": \"test\",\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": [\n        {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"at\": 1,\n          \"reason\": \"   \",\n          \"removed\": false\n        }\n      ]\n    },\n    \"http://127.0.0.1:8080\": {\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"type\": \"main\",\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"firstSeenAt\": 1794200000,\n          \"verifiedAt\": null,\n          \"verification\": null\n        }\n      },\n      \"audit\": []\n    }\n  }\n}\n",
+      "expected": {
+        "error": "malformed"
+      }
+    }
+  ],
+  "files": [
+    {
+      "name": "missing",
+      "description": "No file at the path: an empty store.",
+      "posixOnly": false,
+      "absent": true,
+      "expected": {
+        "origins": {}
+      }
+    },
+    {
+      "name": "mode_0600",
+      "description": "The mode every SDK writes.",
+      "posixOnly": true,
+      "mode": "0600",
+      "content": "two_origins",
+      "expected": {
+        "origins": {
+          "https://rest.vaultody.com": {
+            "responseSignature": {
+              "latchedAt": 1794201002,
+              "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df"
+            },
+            "vaults": {
+              "6630f1c2a9e4b5d7c8e9f0a1": {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "verified",
+                "firstSeenAt": 1794200000,
+                "verifiedAt": 1794201002,
+                "verification": {
+                  "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+                  "timestamp": 1794201000
+                }
+              },
+              "6630f1c2a9e4b5d7c8e9f0b2": {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0b2",
+                "type": "test",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": null
+                },
+                "status": "unverified",
+                "firstSeenAt": 1794200000,
+                "verifiedAt": null,
+                "verification": null
+              }
+            },
+            "audit": []
+          },
+          "http://127.0.0.1:8080": {
+            "responseSignature": null,
+            "vaults": {
+              "6630f1c2a9e4b5d7c8e9f0c3": {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0c3",
+                "type": "main",
+                "keys": {
+                  "ECDSA": null,
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "unverified",
+                "firstSeenAt": 1794200000,
+                "verifiedAt": null,
+                "verification": null
+              }
+            },
+            "audit": []
+          }
+        }
+      }
+    },
+    {
+      "name": "mode_0644",
+      "description": "Readable by others but writable only by its owner: accepted (writers still use 0600).",
+      "posixOnly": true,
+      "mode": "0644",
+      "content": "two_origins",
+      "expected": {
+        "origins": {
+          "https://rest.vaultody.com": {
+            "responseSignature": {
+              "latchedAt": 1794201002,
+              "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df"
+            },
+            "vaults": {
+              "6630f1c2a9e4b5d7c8e9f0a1": {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "verified",
+                "firstSeenAt": 1794200000,
+                "verifiedAt": 1794201002,
+                "verification": {
+                  "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+                  "timestamp": 1794201000
+                }
+              },
+              "6630f1c2a9e4b5d7c8e9f0b2": {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0b2",
+                "type": "test",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": null
+                },
+                "status": "unverified",
+                "firstSeenAt": 1794200000,
+                "verifiedAt": null,
+                "verification": null
+              }
+            },
+            "audit": []
+          },
+          "http://127.0.0.1:8080": {
+            "responseSignature": null,
+            "vaults": {
+              "6630f1c2a9e4b5d7c8e9f0c3": {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0c3",
+                "type": "main",
+                "keys": {
+                  "ECDSA": null,
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "unverified",
+                "firstSeenAt": 1794200000,
+                "verifiedAt": null,
+                "verification": null
+              }
+            },
+            "audit": []
+          }
+        }
+      }
+    },
+    {
+      "name": "group_writable",
+      "description": "Writable by the group (0620).",
+      "posixOnly": true,
+      "mode": "0620",
+      "content": "two_origins",
+      "expected": {
+        "error": "insecure_permissions"
+      }
+    },
+    {
+      "name": "world_writable",
+      "description": "Writable by others (0602).",
+      "posixOnly": true,
+      "mode": "0602",
+      "content": "two_origins",
+      "expected": {
+        "error": "insecure_permissions"
+      }
+    },
+    {
+      "name": "world_writable_and_malformed",
+      "description": "Both writable by others and malformed: the mode is checked first.",
+      "posixOnly": true,
+      "mode": "0666",
+      "content": "invalid:bad_status",
+      "expected": {
+        "error": "insecure_permissions"
+      }
+    },
+    {
+      "name": "symlink",
+      "description": "A symbolic link (mode 0777 itself) to a valid file with mode 0600.",
+      "posixOnly": true,
+      "symlinkTo": "two_origins",
+      "expected": {
+        "error": "not_regular_file"
+      }
+    },
+    {
+      "name": "directory",
+      "description": "A directory at the path.",
+      "posixOnly": false,
+      "directory": true,
+      "expected": {
+        "error": "not_regular_file"
+      }
+    }
+  ],
+  "canonical": [
+    {
+      "name": "empty",
+      "description": "No origin.",
+      "document": {
+        "format": "vaultody vault keys v1",
+        "origins": {}
+      },
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {}\n}\n"
+    },
+    {
+      "name": "two_origins",
+      "description": "Two origins, three pins, a latch.",
+      "document": {
+        "format": "vaultody vault keys v1",
+        "origins": {
+          "https://rest.vaultody.com": {
+            "responseSignature": {
+              "latchedAt": 1794201002,
+              "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df"
+            },
+            "vaults": {
+              "6630f1c2a9e4b5d7c8e9f0a1": {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "verified",
+                "firstSeenAt": 1794200000,
+                "verifiedAt": 1794201002,
+                "verification": {
+                  "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+                  "timestamp": 1794201000
+                }
+              },
+              "6630f1c2a9e4b5d7c8e9f0b2": {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0b2",
+                "type": "test",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": null
+                },
+                "status": "unverified",
+                "firstSeenAt": 1794200000,
+                "verifiedAt": null,
+                "verification": null
+              }
+            },
+            "audit": []
+          },
+          "http://127.0.0.1:8080": {
+            "responseSignature": null,
+            "vaults": {
+              "6630f1c2a9e4b5d7c8e9f0c3": {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0c3",
+                "type": "main",
+                "keys": {
+                  "ECDSA": null,
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "unverified",
+                "firstSeenAt": 1794200000,
+                "verifiedAt": null,
+                "verification": null
+              }
+            },
+            "audit": []
+          }
+        }
+      },
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"http://127.0.0.1:8080\": {\n      \"audit\": [],\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0c3\": {\n          \"firstSeenAt\": 1794200000,\n          \"keys\": {\n            \"ECDSA\": null,\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"type\": \"main\",\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0c3\",\n          \"verification\": null,\n          \"verifiedAt\": null\n        }\n      }\n    },\n    \"https://rest.vaultody.com\": {\n      \"audit\": [],\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\"\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"firstSeenAt\": 1794200000,\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"type\": \"main\",\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          },\n          \"verifiedAt\": 1794201002\n        },\n        \"6630f1c2a9e4b5d7c8e9f0b2\": {\n          \"firstSeenAt\": 1794200000,\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"type\": \"test\",\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\",\n          \"verification\": null,\n          \"verifiedAt\": null\n        }\n      }\n    }\n  }\n}\n"
+    },
+    {
+      "name": "audit_entries",
+      "description": "Audit entries keep their order (a list is never sorted).",
+      "document": {
+        "format": "vaultody vault keys v1",
+        "origins": {
+          "https://rest.vaultody.com": {
+            "responseSignature": null,
+            "vaults": {
+              "6630f1c2a9e4b5d7c8e9f0a1": {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "verified",
+                "firstSeenAt": 1794200000,
+                "verifiedAt": 1794201002,
+                "verification": {
+                  "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+                  "timestamp": 1794201000
+                }
+              }
+            },
+            "audit": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "at": 1794300000,
+                "reason": "xpub confirmed with Vaultody support, ticket TEST-1",
+                "removed": false
+              },
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0b2",
+                "at": 1794300100,
+                "reason": "vault deleted",
+                "removed": true
+              }
+            ]
+          }
+        }
+      },
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"audit\": [\n        {\n          \"at\": 1794300000,\n          \"reason\": \"xpub confirmed with Vaultody support, ticket TEST-1\",\n          \"removed\": false,\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\"\n        },\n        {\n          \"at\": 1794300100,\n          \"reason\": \"vault deleted\",\n          \"removed\": true,\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0b2\"\n        }\n      ],\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"firstSeenAt\": 1794200000,\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"verified\",\n          \"type\": \"main\",\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"verification\": {\n            \"rootId\": \"b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df\",\n            \"timestamp\": 1794201000\n          },\n          \"verifiedAt\": 1794201002\n        }\n      }\n    }\n  }\n}\n"
+    },
+    {
+      "name": "unicode_and_slashes",
+      "description": "Non-ASCII text and \"/\" are written as they are, not escaped.",
+      "document": {
+        "format": "vaultody vault keys v1",
+        "origins": {
+          "https://rest.vaultody.com": {
+            "responseSignature": null,
+            "vaults": {
+              "6630f1c2a9e4b5d7c8e9f0a1": {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "unverified",
+                "firstSeenAt": 1794200000,
+                "verifiedAt": null,
+                "verification": null
+              }
+            },
+            "audit": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "at": 0,
+                "reason": "потвърдено ✓ 確認",
+                "removed": false
+              }
+            ]
+          }
+        }
+      },
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"audit\": [\n        {\n          \"at\": 0,\n          \"reason\": \"потвърдено ✓ 確認\",\n          \"removed\": false,\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\"\n        }\n      ],\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"firstSeenAt\": 1794200000,\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"type\": \"main\",\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"verification\": null,\n          \"verifiedAt\": null\n        }\n      }\n    }\n  }\n}\n"
+    },
+    {
+      "name": "ipv6_origin",
+      "description": "An IPv6 origin.",
+      "document": {
+        "format": "vaultody vault keys v1",
+        "origins": {
+          "http://[::1]:8080": {
+            "responseSignature": null,
+            "vaults": {
+              "6630f1c2a9e4b5d7c8e9f0a1": {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "test",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": null
+                },
+                "status": "unverified",
+                "firstSeenAt": 1794200000,
+                "verifiedAt": null,
+                "verification": null
+              }
+            },
+            "audit": []
+          }
+        }
+      },
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"http://[::1]:8080\": {\n      \"audit\": [],\n      \"responseSignature\": null,\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"firstSeenAt\": 1794200000,\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": null\n          },\n          \"status\": \"unverified\",\n          \"type\": \"test\",\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"verification\": null,\n          \"verifiedAt\": null\n        }\n      }\n    }\n  }\n}\n"
+    },
+    {
+      "name": "latch_unverified",
+      "description": "A latch whose rootId is null.",
+      "document": {
+        "format": "vaultody vault keys v1",
+        "origins": {
+          "https://rest.vaultody.com": {
+            "responseSignature": {
+              "latchedAt": 1794201002,
+              "rootId": null
+            },
+            "vaults": {
+              "6630f1c2a9e4b5d7c8e9f0a1": {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "unverified",
+                "firstSeenAt": 1794200000,
+                "verifiedAt": null,
+                "verification": null
+              }
+            },
+            "audit": []
+          }
+        }
+      },
+      "text": "{\n  \"format\": \"vaultody vault keys v1\",\n  \"origins\": {\n    \"https://rest.vaultody.com\": {\n      \"audit\": [],\n      \"responseSignature\": {\n        \"latchedAt\": 1794201002,\n        \"rootId\": null\n      },\n      \"vaults\": {\n        \"6630f1c2a9e4b5d7c8e9f0a1\": {\n          \"firstSeenAt\": 1794200000,\n          \"keys\": {\n            \"ECDSA\": \"xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8\",\n            \"EDDSA\": \"xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH\"\n          },\n          \"status\": \"unverified\",\n          \"type\": \"main\",\n          \"vaultId\": \"6630f1c2a9e4b5d7c8e9f0a1\",\n          \"verification\": null,\n          \"verifiedAt\": null\n        }\n      }\n    }\n  }\n}\n"
+    }
+  ]
+}

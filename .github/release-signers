@@ -1,0 +1,6 @@
+# Who may sign a release tag (docs/RELEASING.md): OpenSSH allowed_signers, one line per release manager,
+#
+#   <email> namespaces="git" ssh-ed25519 AAAA...
+#
+# The release workflow reads this file as it is on main and refuses a tag that none of these keys signed.
+# Empty, nobody can release. Changed only through a reviewed pull request (CODEOWNERS: .github/).

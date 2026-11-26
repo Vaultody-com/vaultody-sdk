@@ -1,0 +1,322 @@
+{
+  "about": [
+    "The cases every client runs against a real API (conformance/live/README.md). One list for all languages, so they run the same calls with the same params.",
+    "A param value \"$name\" is read from the fixture (discover.js writes it from the client's own data); \"@caseId.field\" is a field of the item an earlier case returned; \"{client}\" and \"{run}\" in a string are the client's name (node, python-sync, python-async, php) and the run's id.",
+    "A case whose fixture value is missing is skipped, never guessed.",
+    "class: read (GET), read-post (a POST that changes nothing, retried like a read), safe-write (changes nothing a client relies on: no funds move, nothing waits for an approval), negative, not-run.",
+    "paging: limit is the page size asked for, maxPages bounds how many pages are fetched, idField names each item (no item may come twice); everyItem compares the SDK's own iterator, at that page size, with one page of 50."
+  ],
+  "apiVersion": "2026-03-20",
+  "cases": [
+    {
+      "id": "listVaults.test",
+      "group": "vaults",
+      "op": "listVaults",
+      "class": "read",
+      "kind": "list",
+      "params": { "networkType": "test" },
+      "paging": { "limit": 1, "maxPages": 3, "idField": "id", "everyItem": true },
+      "vaultKeys": true
+    },
+    {
+      "id": "listVaults.main",
+      "group": "vaults",
+      "op": "listVaults",
+      "class": "read",
+      "kind": "list",
+      "params": { "networkType": "main" },
+      "paging": { "limit": 1, "maxPages": 3, "idField": "id", "everyItem": true },
+      "vaultKeys": true
+    },
+    {
+      "id": "listVaultsByAssetId",
+      "group": "vaults",
+      "op": "listVaultsByAssetId",
+      "class": "read",
+      "kind": "item",
+      "params": { "assetId": "$ethAssetId", "blockchain": "ethereum", "networkType": "test" },
+      "field": "vaults"
+    },
+    {
+      "id": "listAssetsByVault",
+      "group": "vaults",
+      "op": "listAssetsByVault",
+      "class": "read",
+      "kind": "item",
+      "params": { "vaultId": "$vaultId" },
+      "field": "assets"
+    },
+    {
+      "id": "listTransactionsByVault",
+      "group": "vaults",
+      "op": "listTransactionsByVault",
+      "class": "read",
+      "kind": "list",
+      "params": { "vaultId": "$vaultId" },
+      "paging": { "limit": 2, "maxPages": 3, "idField": "id" }
+    },
+    {
+      "id": "listVaultAccounts",
+      "group": "vaultAccounts",
+      "op": "listVaultAccounts",
+      "class": "read",
+      "kind": "list",
+      "params": { "vaultId": "$vaultId" },
+      "paging": { "limit": 1, "maxPages": 3, "idField": "vaultAccountId", "everyItem": true }
+    },
+    {
+      "id": "getVaultAccountById",
+      "group": "vaultAccounts",
+      "op": "getVaultAccountById",
+      "class": "read",
+      "kind": "item",
+      "params": { "vaultId": "$vaultId", "vaultAccountId": "$vaultAccountId" },
+      "field": "vaultAccountId"
+    },
+    {
+      "id": "listAssetsByVaultAccountId",
+      "group": "vaultAccounts",
+      "op": "listAssetsByVaultAccountId",
+      "class": "read",
+      "kind": "list",
+      "params": { "vaultId": "$vaultId", "vaultAccountId": "$vaultAccountId" },
+      "paging": { "limit": 5, "maxPages": 3, "idField": "assetId", "everyItem": true }
+    },
+    {
+      "id": "listTransactionsByVaultAccount",
+      "group": "vaultAccounts",
+      "op": "listTransactionsByVaultAccount",
+      "class": "read",
+      "kind": "list",
+      "params": { "vaultId": "$vaultId", "vaultAccountId": "$vaultAccountId" },
+      "paging": { "limit": 2, "maxPages": 3, "idField": "id" }
+    },
+    {
+      "id": "addAssetToVaultAccount",
+      "group": "vaultAccounts",
+      "op": "addAssetToVaultAccount",
+      "class": "safe-write",
+      "kind": "item",
+      "params": { "vaultId": "$vaultId", "vaultAccountId": "$vaultAccountId", "assetId": "$btcAssetId", "address": "$btcHeldAddress" },
+      "field": "address",
+      "addressChecks": true,
+      "why": "The asset the address already holds, on that address: the API's 'already added' answer, which writes nothing."
+    },
+    {
+      "id": "generateDepositAddress",
+      "group": "assetsAddresses",
+      "op": "generateDepositAddress",
+      "class": "safe-write",
+      "kind": "item",
+      "params": { "vaultId": "$vaultId", "blockchain": "ethereum", "network": "sepolia", "vaultAccountId": "$vaultAccountId", "label": "sdk-conformance-{client}-{run}" },
+      "field": "address",
+      "addressChecks": true,
+      "why": "A new deposit address on a test network; nothing moves and nothing waits for an approval."
+    },
+    {
+      "id": "getAddressBalance",
+      "group": "assetsAddresses",
+      "op": "getAddressBalance",
+      "class": "read",
+      "kind": "list",
+      "params": { "vaultId": "$vaultId", "address": "$ethAddress", "blockchain": "ethereum" },
+      "paging": { "maxPages": 1, "idField": "assetId" }
+    },
+    {
+      "id": "listAddressesByVaultAccountId",
+      "group": "assetsAddresses",
+      "op": "listAddressesByVaultAccountId",
+      "class": "read",
+      "kind": "list",
+      "params": { "vaultId": "$vaultId", "vaultAccountId": "$vaultAccountId", "blockchain": "bitcoin" },
+      "paging": { "limit": 5, "maxPages": 4, "idField": "addressId", "everyItem": true },
+      "addressChecks": true
+    },
+    {
+      "id": "listSupportedAssets",
+      "group": "assetsAddresses",
+      "op": "listSupportedAssets",
+      "class": "read",
+      "kind": "list",
+      "params": { "networkType": "test", "blockchain": "ethereum" },
+      "paging": { "limit": 3, "maxPages": 3, "idField": "assetId" }
+    },
+    {
+      "id": "validateAddress",
+      "group": "assetsAddresses",
+      "op": "validateAddress",
+      "class": "read-post",
+      "kind": "item",
+      "params": { "blockchain": "bitcoin", "network": "testnet", "address": "$btcAddress" },
+      "field": "isValid",
+      "equals": true
+    },
+    {
+      "id": "encodeXrpAddress",
+      "group": "assetsAddresses",
+      "op": "encodeXrpAddress",
+      "class": "read",
+      "kind": "item",
+      "params": { "network": "testnet", "classicAddress": "$xrpAddress", "addressTag": "4242" },
+      "field": "xAddress"
+    },
+    {
+      "id": "decodeXrpAddress",
+      "group": "assetsAddresses",
+      "op": "decodeXrpAddress",
+      "class": "read",
+      "kind": "item",
+      "params": { "network": "testnet", "xAddress": "@encodeXrpAddress.xAddress" },
+      "field": "classicAddress",
+      "equals": "$xrpAddress"
+    },
+    {
+      "id": "tronResourceOverview",
+      "group": "assetsAddresses",
+      "op": "tronResourceOverview",
+      "class": "read",
+      "kind": "item",
+      "params": { "vaultId": "$vaultId", "blockchain": "tron", "network": "nile", "address": "$tronAddress" },
+      "field": "address"
+    },
+    {
+      "id": "validateUtxoTransfer",
+      "group": "transactions",
+      "op": "validateUtxoTransfer",
+      "class": "read-post",
+      "kind": "item",
+      "params": {
+        "vaultId": "$vaultId",
+        "assetId": "$btcAssetId",
+        "feePriority": "standard",
+        "senders": [{ "utxoId": "$utxoId" }],
+        "recipients": [{ "address": "$btcAddress2", "amount": "0.00001" }]
+      },
+      "field": "sendersValid",
+      "acceptTyped4xx": true,
+      "why": "A dry run of Create UTXO Transfer: the API creates nothing and reserves no UTXO. With no unspent UTXO in the vault the fixture names a spent one: an answer with sendersValid false, or a typed 4xx error, both pass."
+    },
+    {
+      "id": "estimateTransactionFeeByAssetId",
+      "group": "transactions",
+      "op": "estimateTransactionFeeByAssetId",
+      "class": "read-post",
+      "kind": "item",
+      "params": {
+        "vaultId": "$vaultId",
+        "vaultAccountId": "$vaultAccountId",
+        "transactionType": "single",
+        "assetId": "$ethAssetId",
+        "fromAddress": "$ethAddress",
+        "toAddress": "$ethAddress2",
+        "amount": "0.0001",
+        "feePriority": "standard"
+      },
+      "field": "feeInNative"
+    },
+    {
+      "id": "getTransactionDetails",
+      "group": "transactions",
+      "op": "getTransactionDetails",
+      "class": "read",
+      "kind": "item",
+      "params": { "vaultId": "$vaultId", "blockchain": "$txBlockchain", "transactionId": "$txId" },
+      "field": "status"
+    },
+    {
+      "id": "getTransactionRequestDetails",
+      "group": "transactions",
+      "op": "getTransactionRequestDetails",
+      "class": "read",
+      "kind": "item",
+      "params": { "transactionRequestId": "$transactionRequestId" },
+      "field": "transactionRequestStatus"
+    },
+    {
+      "id": "getTransactionRequestDetails.unknown",
+      "group": "transactions",
+      "op": "getTransactionRequestDetails",
+      "class": "read",
+      "kind": "item",
+      "params": { "transactionRequestId": "000000000000000000000000" },
+      "expectError": { "typed4xx": true },
+      "why": "No transaction request has this id: the answer must come back as a typed 4xx error, not a generic one."
+    },
+    {
+      "id": "listUtxos",
+      "group": "transactions",
+      "op": "listUtxos",
+      "class": "read",
+      "kind": "list",
+      "params": { "vaultId": "$vaultId", "assetId": "$btcAssetId" },
+      "paging": { "limit": 2, "maxPages": 3, "idField": "utxoId" }
+    },
+    {
+      "id": "listApiKeySigningKeys",
+      "group": "apiKeys",
+      "op": "listApiKeySigningKeys",
+      "class": "read",
+      "kind": "list",
+      "params": {},
+      "paging": { "maxPages": 1, "idField": "fingerprint" }
+    },
+    {
+      "id": "negative.wrongPassphrase",
+      "class": "negative",
+      "check": "wrongPassphrase",
+      "group": "apiKeys",
+      "op": "listApiKeySigningKeys",
+      "params": {},
+      "expectError": { "class": "AuthenticationError", "status": 401, "requests": 1 },
+      "why": "A typed authentication error, sent once (never retried). Runs alone: no other call of this API key may be in flight (the gateway shares an in-flight key validation)."
+    },
+    {
+      "id": "negative.invalidEnum",
+      "class": "negative",
+      "check": "beforeSend",
+      "group": "vaults",
+      "op": "listVaults",
+      "params": { "networkType": "MAIN" },
+      "expectError": { "class": "ParameterError", "code": "invalid_param", "requests": 0 }
+    },
+    {
+      "id": "negative.unknownParam",
+      "class": "negative",
+      "check": "beforeSend",
+      "group": "vaults",
+      "op": "listVaults",
+      "params": { "networkType": "test", "colour": "red" },
+      "expectError": { "class": "ParameterError", "code": "unknown_param", "requests": 0 }
+    },
+    {
+      "id": "negative.rootsOnUnsignedOrigin",
+      "class": "negative",
+      "check": "rootsOnUnsignedOrigin",
+      "group": "assetsAddresses",
+      "op": "listSupportedAssets",
+      "params": {},
+      "expectError": { "class": "ResponseVerificationError", "reason": "missing", "requests": 1 },
+      "why": "A client given response-signing roots is strict from its first answer: against an origin that does not sign (or a signature stripped from the start) the answer is refused as missing, sent once and never retried. The client gets the TEST-ONLY root of test-vectors/v1.json and an in-memory pin store, so the run's pin file is not touched."
+    },
+    {
+      "id": "negative.burst429",
+      "class": "negative",
+      "check": "burst",
+      "read": { "group": "assetsAddresses", "op": "encodeXrpAddress", "params": { "network": "testnet", "classicAddress": "$xrpAddress", "addressTag": "4242" } },
+      "write": { "group": "assetsAddresses", "op": "generateDepositAddress", "params": { "vaultId": "$vaultId", "blockchain": "ethereum", "network": "sepolia", "vaultAccountId": "$vaultAccountId", "label": "sdk-conformance-{client}-burst-{run}" } },
+      "count": { "group": "assetsAddresses", "op": "listAddressesByVaultAccountId", "params": { "vaultId": "$vaultId", "vaultAccountId": "$vaultAccountId", "blockchain": "ethereum" } },
+      "why": "Off unless VAULTODY_CONFORMANCE_BURST is set (README: on a small test environment a burst big enough for a 429 makes the API fail). That many reads from 4 workers (PHP: one after another), with the client's own limit lifted, then one deposit address in the same second: every read retried to success after a 429, the write run exactly once (one address with its label)."
+    }
+  ],
+  "notRun": [
+    { "group": "vaultAccounts", "op": "createVaultAccount", "why": "Creates a vault account that can't be deleted; may need an approval under the governance policies.", "mock": "every method against the mock gateway with the API reference's request and answer examples: node/packages/sdk/test/methods.test.js, python/vaultody-sdk/tests/test_methods.py, php/tests/ApiMethodsTest.php" },
+    { "group": "vaultAccounts", "op": "updateVaultAccount", "why": "Changes a real vault account's settings; may need an approval under the governance policies.", "mock": "every method against the mock gateway with the API reference's request and answer examples: node/packages/sdk/test/methods.test.js, python/vaultody-sdk/tests/test_methods.py, php/tests/ApiMethodsTest.php" },
+    { "group": "assetsAddresses", "op": "tronResourceManagement", "why": "Freezes, unfreezes or delegates TRX: funds move and the request waits for a phone approval.", "mock": "every method against the mock gateway with the API reference's request and answer examples: node/packages/sdk/test/methods.test.js, python/vaultody-sdk/tests/test_methods.py, php/tests/ApiMethodsTest.php" },
+    { "group": "transactions", "op": "createSingleTransfer", "why": "A transfer: funds move after a phone approval.", "mock": "every method against the mock gateway with the API reference's request and answer examples: node/packages/sdk/test/methods.test.js, python/vaultody-sdk/tests/test_methods.py, php/tests/ApiMethodsTest.php; write retries and outcome unknown: node/packages/sdk/test/pipeline-retry.test.js, python/vaultody-sdk/tests/test_client_retries.py, php/tests/TransportTest.php (test-vectors/retry-v1.json)" },
+    { "group": "transactions", "op": "createMultipleTransfer", "why": "A transfer: funds move after a phone approval.", "mock": "every method against the mock gateway with the API reference's request and answer examples: node/packages/sdk/test/methods.test.js, python/vaultody-sdk/tests/test_methods.py, php/tests/ApiMethodsTest.php" },
+    { "group": "transactions", "op": "createUtxoTransfer", "why": "A transfer: funds move after a phone approval (validateUtxoTransfer, its dry run, does run).", "mock": "every method against the mock gateway with the API reference's request and answer examples: node/packages/sdk/test/methods.test.js, python/vaultody-sdk/tests/test_methods.py, php/tests/ApiMethodsTest.php" },
+    { "group": "transactions", "op": "createBatchTransactionRequest", "why": "A transfer: funds move after a phone approval.", "mock": "every method against the mock gateway with the API reference's request and answer examples: node/packages/sdk/test/methods.test.js, python/vaultody-sdk/tests/test_methods.py, php/tests/ApiMethodsTest.php" },
+    { "group": "transactions", "op": "gasSponsorshipTransfer", "why": "A transfer: funds move after a phone approval.", "mock": "every method against the mock gateway with the API reference's request and answer examples: node/packages/sdk/test/methods.test.js, python/vaultody-sdk/tests/test_methods.py, php/tests/ApiMethodsTest.php" },
+    { "group": "transactions", "op": "createTronContractInteractionRequest", "why": "A contract call (approve / transferFrom) that moves or allows moving funds, after a phone approval.", "mock": "every method against the mock gateway with the API reference's request and answer examples: node/packages/sdk/test/methods.test.js, python/vaultody-sdk/tests/test_methods.py, php/tests/ApiMethodsTest.php" }
+  ]
+}

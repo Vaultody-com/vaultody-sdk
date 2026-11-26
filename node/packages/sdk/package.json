@@ -1,0 +1,36 @@
+{
+  "name": "@vaultody/sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The official Vaultody SDK for Node.js: a method for every documented API operation, over a transport that signs, verifies responses, pins vault xpubs, checks addresses, retries and pages; webhook verification; and the vaultody command line for request-signing keys (npx @vaultody/sdk keys ...).",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Vaultody-com/vaultody-sdk.git",
+    "directory": "node/packages/sdk"
+  },
+  "type": "commonjs",
+  "main": "./src/index.js",
+  "bin": {
+    "vaultody": "./bin/vaultody.js"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./operations": "./src/operations.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@vaultody/verify": "0.1.0"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}

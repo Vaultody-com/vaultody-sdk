@@ -1,0 +1,529 @@
+{
+  "format": "vaultody transport error classification, v1",
+  "source": {
+    "generator": "test-vectors/tools/generate-sdk-vectors.js"
+  },
+  "rules": {
+    "sent": "false only when the client library proves the request never left: the name could not be resolved, the connection was refused or timed out while connecting, or the TLS handshake (certificate) failed. Everything else is \"unknown\": the request may have reached the gateway. A write whose sending is unknown is never treated as not sent (retry-v1.json).",
+    "node": "fetch (undici) wraps the cause: walk error.cause; an AggregateError (one error per address tried) is not sent only when every error in it is. Codes that mean not sent: ECONNREFUSED, ENOTFOUND, EAI_AGAIN, UND_ERR_CONNECT_TIMEOUT and the certificate codes listed.",
+    "python": "httpx: ConnectError and ConnectTimeout (and their subclasses) are not sent; every other httpx exception is unknown.",
+    "php": "curl: errno 6, 7, 35 and 60 are not sent; anything else is unknown. Runner pending: the PHP transport comes later."
+  },
+  "caseFormat": {
+    "node": "an error described by name, message, code, cause and errors, to rebuild as Error objects",
+    "python": "an httpx exception class",
+    "php": "a curl errno",
+    "expected": "{ sent: false | \"unknown\" }"
+  },
+  "node": [
+    {
+      "name": "connection_refused",
+      "error": {
+        "name": "TypeError",
+        "message": "fetch failed",
+        "cause": {
+          "name": "Error",
+          "code": "ECONNREFUSED"
+        }
+      },
+      "expected": {
+        "sent": false
+      }
+    },
+    {
+      "name": "dns_not_found",
+      "error": {
+        "name": "TypeError",
+        "message": "fetch failed",
+        "cause": {
+          "name": "Error",
+          "code": "ENOTFOUND"
+        }
+      },
+      "expected": {
+        "sent": false
+      }
+    },
+    {
+      "name": "dns_try_again",
+      "error": {
+        "name": "TypeError",
+        "message": "fetch failed",
+        "cause": {
+          "name": "Error",
+          "code": "EAI_AGAIN"
+        }
+      },
+      "expected": {
+        "sent": false
+      }
+    },
+    {
+      "name": "connect_timeout",
+      "error": {
+        "name": "TypeError",
+        "message": "fetch failed",
+        "cause": {
+          "name": "Error",
+          "code": "UND_ERR_CONNECT_TIMEOUT"
+        }
+      },
+      "expected": {
+        "sent": false
+      }
+    },
+    {
+      "name": "certificate_expired",
+      "error": {
+        "name": "TypeError",
+        "message": "fetch failed",
+        "cause": {
+          "name": "Error",
+          "code": "CERT_HAS_EXPIRED"
+        }
+      },
+      "expected": {
+        "sent": false
+      }
+    },
+    {
+      "name": "certificate_unverified",
+      "error": {
+        "name": "TypeError",
+        "message": "fetch failed",
+        "cause": {
+          "name": "Error",
+          "code": "UNABLE_TO_VERIFY_LEAF_SIGNATURE"
+        }
+      },
+      "expected": {
+        "sent": false
+      }
+    },
+    {
+      "name": "certificate_self_signed",
+      "error": {
+        "name": "TypeError",
+        "message": "fetch failed",
+        "cause": {
+          "name": "Error",
+          "code": "DEPTH_ZERO_SELF_SIGNED_CERT"
+        }
+      },
+      "expected": {
+        "sent": false
+      }
+    },
+    {
+      "name": "certificate_self_signed_chain",
+      "error": {
+        "name": "TypeError",
+        "message": "fetch failed",
+        "cause": {
+          "name": "Error",
+          "code": "SELF_SIGNED_CERT_IN_CHAIN"
+        }
+      },
+      "expected": {
+        "sent": false
+      }
+    },
+    {
+      "name": "certificate_issuer_unknown",
+      "error": {
+        "name": "TypeError",
+        "message": "fetch failed",
+        "cause": {
+          "name": "Error",
+          "code": "UNABLE_TO_GET_ISSUER_CERT_LOCALLY"
+        }
+      },
+      "expected": {
+        "sent": false
+      }
+    },
+    {
+      "name": "certificate_not_yet_valid",
+      "error": {
+        "name": "TypeError",
+        "message": "fetch failed",
+        "cause": {
+          "name": "Error",
+          "code": "CERT_NOT_YET_VALID"
+        }
+      },
+      "expected": {
+        "sent": false
+      }
+    },
+    {
+      "name": "certificate_wrong_host",
+      "error": {
+        "name": "TypeError",
+        "message": "fetch failed",
+        "cause": {
+          "name": "Error",
+          "code": "ERR_TLS_CERT_ALTNAME_INVALID"
+        }
+      },
+      "expected": {
+        "sent": false
+      }
+    },
+    {
+      "name": "connection_reset",
+      "error": {
+        "name": "TypeError",
+        "message": "fetch failed",
+        "cause": {
+          "name": "Error",
+          "code": "ECONNRESET"
+        }
+      },
+      "expected": {
+        "sent": "unknown"
+      }
+    },
+    {
+      "name": "os_timeout",
+      "error": {
+        "name": "TypeError",
+        "message": "fetch failed",
+        "cause": {
+          "name": "Error",
+          "code": "ETIMEDOUT"
+        }
+      },
+      "expected": {
+        "sent": "unknown"
+      }
+    },
+    {
+      "name": "broken_pipe",
+      "error": {
+        "name": "TypeError",
+        "message": "fetch failed",
+        "cause": {
+          "name": "Error",
+          "code": "EPIPE"
+        }
+      },
+      "expected": {
+        "sent": "unknown"
+      }
+    },
+    {
+      "name": "socket_closed",
+      "error": {
+        "name": "TypeError",
+        "message": "fetch failed",
+        "cause": {
+          "name": "Error",
+          "code": "UND_ERR_SOCKET"
+        }
+      },
+      "expected": {
+        "sent": "unknown"
+      }
+    },
+    {
+      "name": "headers_timeout",
+      "error": {
+        "name": "TypeError",
+        "message": "fetch failed",
+        "cause": {
+          "name": "Error",
+          "code": "UND_ERR_HEADERS_TIMEOUT"
+        }
+      },
+      "expected": {
+        "sent": "unknown"
+      }
+    },
+    {
+      "name": "body_timeout",
+      "error": {
+        "name": "TypeError",
+        "message": "fetch failed",
+        "cause": {
+          "name": "Error",
+          "code": "UND_ERR_BODY_TIMEOUT"
+        }
+      },
+      "expected": {
+        "sent": "unknown"
+      }
+    },
+    {
+      "name": "all_addresses_refused",
+      "error": {
+        "name": "TypeError",
+        "message": "fetch failed",
+        "cause": {
+          "name": "AggregateError",
+          "code": "ECONNREFUSED",
+          "errors": [
+            {
+              "name": "Error",
+              "code": "ECONNREFUSED"
+            },
+            {
+              "name": "Error",
+              "code": "ECONNREFUSED"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "sent": false
+      }
+    },
+    {
+      "name": "addresses_mixed",
+      "error": {
+        "name": "TypeError",
+        "message": "fetch failed",
+        "cause": {
+          "name": "AggregateError",
+          "errors": [
+            {
+              "name": "Error",
+              "code": "ECONNREFUSED"
+            },
+            {
+              "name": "Error",
+              "code": "ETIMEDOUT"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "sent": "unknown"
+      }
+    },
+    {
+      "name": "nested_cause",
+      "error": {
+        "name": "TypeError",
+        "message": "fetch failed",
+        "cause": {
+          "name": "Error",
+          "message": "wrapped",
+          "cause": {
+            "name": "Error",
+            "code": "ENOTFOUND"
+          }
+        }
+      },
+      "expected": {
+        "sent": false
+      }
+    },
+    {
+      "name": "abort",
+      "error": {
+        "name": "AbortError",
+        "message": "This operation was aborted"
+      },
+      "expected": {
+        "sent": "unknown"
+      }
+    },
+    {
+      "name": "timeout_signal",
+      "error": {
+        "name": "TimeoutError",
+        "message": "The operation was aborted due to timeout"
+      },
+      "expected": {
+        "sent": "unknown"
+      }
+    },
+    {
+      "name": "no_code",
+      "error": {
+        "name": "TypeError",
+        "message": "fetch failed",
+        "cause": {
+          "name": "Error",
+          "message": "other side closed"
+        }
+      },
+      "expected": {
+        "sent": "unknown"
+      }
+    }
+  ],
+  "python": [
+    {
+      "name": "ConnectError",
+      "exception": "httpx.ConnectError",
+      "expected": {
+        "sent": false
+      }
+    },
+    {
+      "name": "ConnectTimeout",
+      "exception": "httpx.ConnectTimeout",
+      "expected": {
+        "sent": false
+      }
+    },
+    {
+      "name": "ReadTimeout",
+      "exception": "httpx.ReadTimeout",
+      "expected": {
+        "sent": "unknown"
+      }
+    },
+    {
+      "name": "WriteTimeout",
+      "exception": "httpx.WriteTimeout",
+      "expected": {
+        "sent": "unknown"
+      }
+    },
+    {
+      "name": "PoolTimeout",
+      "exception": "httpx.PoolTimeout",
+      "expected": {
+        "sent": "unknown"
+      }
+    },
+    {
+      "name": "ReadError",
+      "exception": "httpx.ReadError",
+      "expected": {
+        "sent": "unknown"
+      }
+    },
+    {
+      "name": "WriteError",
+      "exception": "httpx.WriteError",
+      "expected": {
+        "sent": "unknown"
+      }
+    },
+    {
+      "name": "RemoteProtocolError",
+      "exception": "httpx.RemoteProtocolError",
+      "expected": {
+        "sent": "unknown"
+      }
+    },
+    {
+      "name": "LocalProtocolError",
+      "exception": "httpx.LocalProtocolError",
+      "expected": {
+        "sent": "unknown"
+      }
+    },
+    {
+      "name": "ProxyError",
+      "exception": "httpx.ProxyError",
+      "expected": {
+        "sent": "unknown"
+      }
+    },
+    {
+      "name": "UnsupportedProtocol",
+      "exception": "httpx.UnsupportedProtocol",
+      "expected": {
+        "sent": "unknown"
+      }
+    },
+    {
+      "name": "CloseError",
+      "exception": "httpx.CloseError",
+      "expected": {
+        "sent": "unknown"
+      }
+    },
+    {
+      "name": "NetworkError",
+      "exception": "httpx.NetworkError",
+      "expected": {
+        "sent": "unknown"
+      }
+    },
+    {
+      "name": "TimeoutException",
+      "exception": "httpx.TimeoutException",
+      "expected": {
+        "sent": "unknown"
+      }
+    },
+    {
+      "name": "TransportError",
+      "exception": "httpx.TransportError",
+      "expected": {
+        "sent": "unknown"
+      }
+    }
+  ],
+  "php": [
+    {
+      "name": "CURLE_COULDNT_RESOLVE_HOST",
+      "curlErrno": 6,
+      "expected": {
+        "sent": false
+      }
+    },
+    {
+      "name": "CURLE_COULDNT_CONNECT",
+      "curlErrno": 7,
+      "expected": {
+        "sent": false
+      }
+    },
+    {
+      "name": "CURLE_SSL_CONNECT_ERROR",
+      "curlErrno": 35,
+      "expected": {
+        "sent": false
+      }
+    },
+    {
+      "name": "CURLE_PEER_FAILED_VERIFICATION",
+      "curlErrno": 60,
+      "expected": {
+        "sent": false
+      }
+    },
+    {
+      "name": "CURLE_OPERATION_TIMEDOUT",
+      "curlErrno": 28,
+      "expected": {
+        "sent": "unknown"
+      }
+    },
+    {
+      "name": "CURLE_GOT_NOTHING",
+      "curlErrno": 52,
+      "expected": {
+        "sent": "unknown"
+      }
+    },
+    {
+      "name": "CURLE_SEND_ERROR",
+      "curlErrno": 55,
+      "expected": {
+        "sent": "unknown"
+      }
+    },
+    {
+      "name": "CURLE_RECV_ERROR",
+      "curlErrno": 56,
+      "expected": {
+        "sent": "unknown"
+      }
+    },
+    {
+      "name": "CURLE_PARTIAL_FILE",
+      "curlErrno": 18,
+      "expected": {
+        "sent": "unknown"
+      }
+    }
+  ]
+}

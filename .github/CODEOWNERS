@@ -1,0 +1,16 @@
+# Code owners. With the ruleset's "require review from code owners", a pull request touching a path needs
+# an approval from one of its owners. CODEOWNERS is read from the base branch, so a change here applies to
+# pull requests opened after it merges. The team needs write access to this repository.
+
+*                           @Vaultody-com/sdk-maintainers
+
+# What decides whether a client trusts a response, an address, a webhook or a release. These stay with
+# the security reviewers even if the default above widens.
+/node/packages/verify/      @Vaultody-com/sdk-maintainers
+/python/vaultody-verify/    @Vaultody-com/sdk-maintainers
+/test-vectors/              @Vaultody-com/sdk-maintainers
+/contract/                  @Vaultody-com/sdk-maintainers
+/.github/                   @Vaultody-com/sdk-maintainers
+/.gitleaks.toml             @Vaultody-com/sdk-maintainers
+/scripts/secret-scan.sh     @Vaultody-com/sdk-maintainers
+/scripts/release/           @Vaultody-com/sdk-maintainers

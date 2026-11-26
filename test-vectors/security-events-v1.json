@@ -1,0 +1,170 @@
+{
+  "format": "vaultody security events, v1",
+  "source": {
+    "generator": "test-vectors/tools/generate-sdk-vectors.js",
+    "doc": "docs/vault-keys-file.md"
+  },
+  "rules": {
+    "names": "The security-event hook (Node onSecurityEvent, Python on_security_event, PHP onSecurityEvent) is called only with these types, and every event has exactly the fields listed: no other, none missing (a value can be null where it is unknown, such as operationId outside the API methods). An event never carries a secret, an xpub or an address.",
+    "order": "The hook is called before the error is thrown; an exception from the hook is swallowed so it can never hide the error.",
+    "alarm": "alarm: an error follows (the answer is refused). The others are information.",
+    "logging": "With no hook, every event is logged once at warning level as \"Vaultody security event: \" followed by its JSON (compact, keys in the catalogue's order, \"/\" and non-ASCII unescaped); with a hook, the hook gets it and nothing is logged. A hook that raises is logged once at warning level as \"the security event hook raised on <type>; the call still fails or continues as it would\". unsigned_response_accepted also has its own warning, hook or not.",
+    "results": "addressCheck and vaultKeyResult are the entries of the per-answer results (Node meta.addressChecks / meta.vaultKeys, Python meta.address_checks / meta.vault_keys, PHP meta->addressChecks / meta->vaultKeys): objects with exactly these keys in every language; only the container's name follows the language's casing."
+  },
+  "caseFormat": {
+    "type": "the event type",
+    "fields": "its keys, type first",
+    "alarm": "whether an error follows",
+    "when": "when the SDK raises it"
+  },
+  "events": [
+    {
+      "type": "unsigned_response_accepted",
+      "fields": [
+        "type",
+        "origin",
+        "operationId"
+      ],
+      "alarm": false,
+      "when": "when-present mode, before the latch: the first unsigned response a client accepts (once per client); one warning is logged after it"
+    },
+    {
+      "type": "response_signature_latched",
+      "fields": [
+        "type",
+        "origin",
+        "rootId",
+        "latchedAt"
+      ],
+      "alarm": false,
+      "when": "the first answer from an origin that carries any of the four response-signature headers, whether it verifies or not (rootId null when it does not; raised before its error): unsigned responses are refused from then on (response-mode-v1.json)"
+    },
+    {
+      "type": "response_verification_failed",
+      "fields": [
+        "type",
+        "origin",
+        "operationId",
+        "status",
+        "reason"
+      ],
+      "alarm": true,
+      "when": "a response fails its signature check (reason: missing, invalid, expired, unknown_root, request_unbound, unsupported_version, ...); ResponseVerificationError follows and it is never retried"
+    },
+    {
+      "type": "vault_key_pinned",
+      "fields": [
+        "type",
+        "origin",
+        "vaultId",
+        "status"
+      ],
+      "alarm": false,
+      "when": "a vault is pinned for the first time (status verified or unverified)"
+    },
+    {
+      "type": "vault_key_verified",
+      "fields": [
+        "type",
+        "origin",
+        "vaultId",
+        "status"
+      ],
+      "alarm": false,
+      "when": "an unverified pin is confirmed by a signed vault list (status verified)"
+    },
+    {
+      "type": "vault_key_changed",
+      "fields": [
+        "type",
+        "origin",
+        "alarms"
+      ],
+      "alarm": true,
+      "when": "a vault list differs from a pin; alarms as in VaultKeyChangedError; VaultKeyChangedError follows"
+    },
+    {
+      "type": "address_verification_failed",
+      "fields": [
+        "type",
+        "origin",
+        "operationId",
+        "vaultId",
+        "code"
+      ],
+      "alarm": true,
+      "when": "an address in an answer can't be accepted (code as in AddressVerificationError: mismatch, unsupported, unknown_vault, ...); AddressVerificationError follows"
+    }
+  ],
+  "alarm": {
+    "fields": [
+      "vaultId",
+      "algorithm",
+      "reason",
+      "pinned",
+      "seen"
+    ],
+    "reasons": [
+      "xpub_changed",
+      "xpub_missing",
+      "xpub_added",
+      "type_changed"
+    ]
+  },
+  "addressCodes": [
+    {
+      "code": "mismatch",
+      "when": "the address does not derive from the vault's pinned xpub; addAssetToVaultAccount answers another address than the one sent; an item that carries its derivation path names another blockchain than the one asked for"
+    },
+    {
+      "code": "network_mismatch",
+      "when": "an item that carries its derivation path names another network than the one asked for (generateDepositAddress), or the network does not go with the vault type (mainnet with a main vault, any other with a test vault)"
+    },
+    {
+      "code": "invalid",
+      "when": "an answer item without an address, or with path fields that can't be read"
+    },
+    {
+      "code": "unsupported",
+      "when": "the chain of an address with its path is not given, or is not one the SDK can derive"
+    },
+    {
+      "code": "unknown_vault",
+      "when": "the vault of the answer is in neither vault list"
+    },
+    {
+      "code": "path_missing",
+      "when": "with requireAddressPaths on (the default once the derivation paths are public), generateDepositAddress answers an address without accountIndex, isChange and addressIndex for a vault with MPC keys, on a chain the SDK can derive (vault-key-pins-v1.json addressChecks)"
+    }
+  ],
+  "addressCheck": {
+    "fields": [
+      "vaultId",
+      "address",
+      "status"
+    ],
+    "status": [
+      "verified",
+      "unverified",
+      "not_verifiable"
+    ]
+  },
+  "vaultKeyResult": {
+    "fields": [
+      "vaultId",
+      "status",
+      "outcome"
+    ],
+    "status": [
+      "verified",
+      "unverified",
+      "not_verifiable"
+    ],
+    "outcome": [
+      "pinned",
+      "unchanged",
+      "upgraded",
+      "not_verifiable"
+    ]
+  }
+}

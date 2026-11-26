@@ -1,0 +1,527 @@
+{
+  "format": "vaultody response signature mode, v1",
+  "warning": "TEST-ONLY: the answers are cases of v1.json, signed with its TEST-ONLY keys.",
+  "source": {
+    "generator": "test-vectors/tools/generate-sdk-vectors.js",
+    "responses": "test-vectors/v1.json, by case name"
+  },
+  "rules": {
+    "rootsConfigured": "Roots are configured when the roots option is given (any value but null), or when the SDK is a stable version (X.Y.Z, no -rc.N; Python compares its PEP 440 form, X.Y.ZrcN) and its build embeds at least one response-signing root. A release candidate that embeds the root is not strict for that alone: it bridges to signing through the latch.",
+    "mode": "The mode in force is required when roots are configured, whatever the option says; a when-present given explicitly (the option, or VAULTODY_RESPONSE_SIGNATURE when the option is not given) is then ignored, with one warning when the client is made. Otherwise: the option, else VAULTODY_RESPONSE_SIGNATURE, else the build default (DEFAULT_RESPONSE_SIGNATURE: when-present for a release candidate, required for a stable release). The client reports the mode in force (Node responseSignature, Python response_signature, PHP responseSignature()), also when it shows itself (inspect, repr, toJSON, __debugInfo).",
+    "unsigned": "An answer with none of the four x-api-response-* headers is refused as missing when the mode in force is required or the origin is latched. Otherwise it is accepted as absent, with unsigned_response_accepted and one warning the first time (once per client).",
+    "signed": "An answer with at least one of the four headers is always checked: valid is verified; a failure raises response_verification_failed and ResponseVerificationError with its reason, never retried; no root to check it with (no roots option and none embedded) is ConfigurationError, with no response_verification_failed.",
+    "latch": "Any answer with at least one of the four headers latches its origin, verified or not, before anything is thrown: { latchedAt: now, rootId: the root that verified it, or null when it did not verify }, stored with the pins (vault-keys-file-v1.json), then response_signature_latched with the latch as stored. Set once, never cleared: an origin latched before is not latched again, and raises no event.",
+    "order": "Events in this order: response_signature_latched, then response_verification_failed or unsigned_response_accepted.",
+    "writes": "Before the first write to an origin, a client whose roots are configured and whose origin is not latched yet makes one signed read (GET /api-keys/current/signing-keys, the key-pair check when a signer is set): against an origin that does not sign, the write fails before it is sent instead of running unverified (no vector; each language tests it against its mock gateway)."
+  },
+  "caseFormat": {
+    "config": "{ name, rootsOption, embeddedRoots, version, buildDefault, option } → expected { mode, warning }. rootsOption: whether the roots option is given; embeddedRoots: whether the build embeds a root; version: the SDK version; buildDefault: DEFAULT_RESPONSE_SIGNATURE; option: the responseSignature option (null: not given, and no VAULTODY_RESPONSE_SIGNATURE). mode: the mode in force; warning: whether the one \"when-present is ignored\" warning is logged.",
+    "answers": "{ name, mode, roots, latchedBefore, answer } → expected { result, latch, events }. mode: the mode in force; roots: whether the client has the case's pinnedRoots to check a signature with (a client built from its configuration: required with roots is the roots option, when-present with roots a release candidate embedding them, required without roots responseSignature required); latchedBefore: the store holds the latch { latchedAt: 1794200000, rootId: the current root } for the origin; answer: \"unsigned\" (v1.json missing_all) or a v1.json case, whose verify.request, verify.response and verify.now are used. result: \"verified\", \"absent\", { error: reason } (ResponseVerificationError) or { configurationError: true }; latch: the store's latch for the origin after the answer, or null; events: the security event types raised, in order."
+  },
+  "previousLatch": {
+    "latchedAt": 1794200000,
+    "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df"
+  },
+  "config": [
+    {
+      "name": "release_candidate_default",
+      "description": "A release candidate with nothing configured: when-present, the bridge until production signs.",
+      "rootsOption": false,
+      "embeddedRoots": false,
+      "version": "0.9.0-rc.1",
+      "buildDefault": "when-present",
+      "option": null,
+      "expected": {
+        "mode": "when-present",
+        "warning": false
+      }
+    },
+    {
+      "name": "release_candidate_required",
+      "description": "responseSignature required: strict from the start.",
+      "rootsOption": false,
+      "embeddedRoots": false,
+      "version": "0.9.0-rc.1",
+      "buildDefault": "when-present",
+      "option": "required",
+      "expected": {
+        "mode": "required",
+        "warning": false
+      }
+    },
+    {
+      "name": "release_candidate_when_present_given",
+      "description": "when-present given and no roots: kept.",
+      "rootsOption": false,
+      "embeddedRoots": false,
+      "version": "0.9.0-rc.1",
+      "buildDefault": "when-present",
+      "option": "when-present",
+      "expected": {
+        "mode": "when-present",
+        "warning": false
+      }
+    },
+    {
+      "name": "roots_option",
+      "description": "The roots option given: strict, so a signature stripped from the first answer on is refused.",
+      "rootsOption": true,
+      "embeddedRoots": false,
+      "version": "0.9.0-rc.1",
+      "buildDefault": "when-present",
+      "option": null,
+      "expected": {
+        "mode": "required",
+        "warning": false
+      }
+    },
+    {
+      "name": "roots_option_when_present_ignored",
+      "description": "The roots option and when-present: strict all the same, and one warning that when-present is ignored.",
+      "rootsOption": true,
+      "embeddedRoots": false,
+      "version": "0.9.0-rc.1",
+      "buildDefault": "when-present",
+      "option": "when-present",
+      "expected": {
+        "mode": "required",
+        "warning": true
+      }
+    },
+    {
+      "name": "roots_option_required",
+      "description": "The roots option and required: strict, no warning.",
+      "rootsOption": true,
+      "embeddedRoots": false,
+      "version": "0.9.0-rc.1",
+      "buildDefault": "when-present",
+      "option": "required",
+      "expected": {
+        "mode": "required",
+        "warning": false
+      }
+    },
+    {
+      "name": "release_candidate_embedded_root",
+      "description": "A release candidate that embeds the root: when-present, so it bridges to signing; the first signed answer latches.",
+      "rootsOption": false,
+      "embeddedRoots": true,
+      "version": "0.9.0-rc.1",
+      "buildDefault": "when-present",
+      "option": null,
+      "expected": {
+        "mode": "when-present",
+        "warning": false
+      }
+    },
+    {
+      "name": "release_candidate_embedded_root_when_present",
+      "description": "A release candidate that embeds the root, when-present given: kept, no warning.",
+      "rootsOption": false,
+      "embeddedRoots": true,
+      "version": "0.9.0-rc.1",
+      "buildDefault": "when-present",
+      "option": "when-present",
+      "expected": {
+        "mode": "when-present",
+        "warning": false
+      }
+    },
+    {
+      "name": "stable_embedded_root",
+      "description": "A stable release embeds the root: strict.",
+      "rootsOption": false,
+      "embeddedRoots": true,
+      "version": "1.0.0",
+      "buildDefault": "required",
+      "option": null,
+      "expected": {
+        "mode": "required",
+        "warning": false
+      }
+    },
+    {
+      "name": "stable_embedded_root_when_present_ignored",
+      "description": "A stable release with an embedded root and when-present given: strict, one warning.",
+      "rootsOption": false,
+      "embeddedRoots": true,
+      "version": "1.0.0",
+      "buildDefault": "required",
+      "option": "when-present",
+      "expected": {
+        "mode": "required",
+        "warning": true
+      }
+    },
+    {
+      "name": "stable_embedded_root_old_default",
+      "description": "A stable version that embeds the root is strict even if its build default were still when-present (the release guard refuses that build).",
+      "rootsOption": false,
+      "embeddedRoots": true,
+      "version": "1.0.0",
+      "buildDefault": "when-present",
+      "option": null,
+      "expected": {
+        "mode": "required",
+        "warning": false
+      }
+    },
+    {
+      "name": "stable_without_root_build_default",
+      "description": "A stable version without an embedded root (the release guard refuses that build): the build default decides.",
+      "rootsOption": false,
+      "embeddedRoots": false,
+      "version": "1.0.0",
+      "buildDefault": "required",
+      "option": null,
+      "expected": {
+        "mode": "required",
+        "warning": false
+      }
+    },
+    {
+      "name": "stable_without_root_when_present_given",
+      "description": "A stable version without roots, when-present given: kept (nothing to be strict with).",
+      "rootsOption": false,
+      "embeddedRoots": false,
+      "version": "1.0.0",
+      "buildDefault": "required",
+      "option": "when-present",
+      "expected": {
+        "mode": "when-present",
+        "warning": false
+      }
+    },
+    {
+      "name": "release_candidate_two_digits",
+      "description": "A release candidate numbered 12 is still a release candidate.",
+      "rootsOption": false,
+      "embeddedRoots": true,
+      "version": "1.0.0-rc.12",
+      "buildDefault": "when-present",
+      "option": null,
+      "expected": {
+        "mode": "when-present",
+        "warning": false
+      }
+    }
+  ],
+  "answers": [
+    {
+      "name": "unsigned_when_present",
+      "description": "An unsigned answer to a release candidate before the latch: accepted unverified, reported once.",
+      "mode": "when-present",
+      "roots": false,
+      "latchedBefore": false,
+      "answer": "unsigned",
+      "expected": {
+        "result": "absent",
+        "latch": null,
+        "events": [
+          "unsigned_response_accepted"
+        ]
+      }
+    },
+    {
+      "name": "unsigned_when_present_with_roots",
+      "description": "The same with an embedded root (a release candidate bridging): accepted, no latch.",
+      "mode": "when-present",
+      "roots": true,
+      "latchedBefore": false,
+      "answer": "unsigned",
+      "expected": {
+        "result": "absent",
+        "latch": null,
+        "events": [
+          "unsigned_response_accepted"
+        ]
+      }
+    },
+    {
+      "name": "unsigned_after_latch",
+      "description": "An unsigned answer from a latched origin: refused as missing; the latch is kept.",
+      "mode": "when-present",
+      "roots": false,
+      "latchedBefore": true,
+      "answer": "unsigned",
+      "expected": {
+        "result": {
+          "error": "missing"
+        },
+        "latch": {
+          "latchedAt": 1794200000,
+          "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df"
+        },
+        "events": [
+          "response_verification_failed"
+        ]
+      }
+    },
+    {
+      "name": "unsigned_required_with_roots",
+      "description": "Roots configured and a signature stripped from the very first answer: refused as missing, nothing latched.",
+      "mode": "required",
+      "roots": true,
+      "latchedBefore": false,
+      "answer": "unsigned",
+      "expected": {
+        "result": {
+          "error": "missing"
+        },
+        "latch": null,
+        "events": [
+          "response_verification_failed"
+        ]
+      }
+    },
+    {
+      "name": "unsigned_required_without_roots",
+      "description": "responseSignature required and no roots: an unsigned answer is refused all the same.",
+      "mode": "required",
+      "roots": false,
+      "latchedBefore": false,
+      "answer": "unsigned",
+      "expected": {
+        "result": {
+          "error": "missing"
+        },
+        "latch": null,
+        "events": [
+          "response_verification_failed"
+        ]
+      }
+    },
+    {
+      "name": "signed_latches",
+      "description": "The first verified answer latches the origin with its root.",
+      "mode": "when-present",
+      "roots": true,
+      "latchedBefore": false,
+      "answer": "valid_current_root",
+      "expected": {
+        "result": "verified",
+        "latch": {
+          "latchedAt": 1794201002,
+          "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df"
+        },
+        "events": [
+          "response_signature_latched"
+        ]
+      }
+    },
+    {
+      "name": "signed_next_root_latches",
+      "description": "Verified with the next root: the latch names it.",
+      "mode": "when-present",
+      "roots": true,
+      "latchedBefore": false,
+      "answer": "valid_next_root",
+      "expected": {
+        "result": "verified",
+        "latch": {
+          "latchedAt": 1794201002,
+          "rootId": "5165ae4e0e215dd17770009a77fdaffec2b44a685f3cb5c4cb9ee059b6631586"
+        },
+        "events": [
+          "response_signature_latched"
+        ]
+      }
+    },
+    {
+      "name": "signed_required_latches",
+      "description": "Strict clients latch too: a store shared with a release candidate is strict for it from then on.",
+      "mode": "required",
+      "roots": true,
+      "latchedBefore": false,
+      "answer": "valid_current_root",
+      "expected": {
+        "result": "verified",
+        "latch": {
+          "latchedAt": 1794201002,
+          "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df"
+        },
+        "events": [
+          "response_signature_latched"
+        ]
+      }
+    },
+    {
+      "name": "signed_already_latched",
+      "description": "An origin latched before is not latched again: no event, the latch as it was.",
+      "mode": "when-present",
+      "roots": true,
+      "latchedBefore": true,
+      "answer": "valid_current_root",
+      "expected": {
+        "result": "verified",
+        "latch": {
+          "latchedAt": 1794200000,
+          "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df"
+        },
+        "events": []
+      }
+    },
+    {
+      "name": "unknown_root_latches",
+      "description": "A signed answer from a root not pinned: refused, and the origin is latched with rootId null before the error.",
+      "mode": "when-present",
+      "roots": true,
+      "latchedBefore": false,
+      "answer": "unknown_root",
+      "expected": {
+        "result": {
+          "error": "unknown_root"
+        },
+        "latch": {
+          "latchedAt": 1794201002,
+          "rootId": null
+        },
+        "events": [
+          "response_signature_latched",
+          "response_verification_failed"
+        ]
+      }
+    },
+    {
+      "name": "tampered_latches",
+      "description": "A signed answer that fails its check: refused, latched with rootId null.",
+      "mode": "when-present",
+      "roots": true,
+      "latchedBefore": false,
+      "answer": "tampered_response_body",
+      "expected": {
+        "result": {
+          "error": "invalid"
+        },
+        "latch": {
+          "latchedAt": 1794201002,
+          "rootId": null
+        },
+        "events": [
+          "response_signature_latched",
+          "response_verification_failed"
+        ]
+      }
+    },
+    {
+      "name": "partly_stripped_latches",
+      "description": "Some of the four headers stripped: refused as missing, and latched (an attacker who strips part of the signature turns the client strict).",
+      "mode": "when-present",
+      "roots": true,
+      "latchedBefore": false,
+      "answer": "missing_sign",
+      "expected": {
+        "result": {
+          "error": "missing"
+        },
+        "latch": {
+          "latchedAt": 1794201002,
+          "rootId": null
+        },
+        "events": [
+          "response_signature_latched",
+          "response_verification_failed"
+        ]
+      }
+    },
+    {
+      "name": "partly_stripped_without_roots",
+      "description": "The same with no roots at all: the headers are checked before any root is needed.",
+      "mode": "when-present",
+      "roots": false,
+      "latchedBefore": false,
+      "answer": "missing_sign",
+      "expected": {
+        "result": {
+          "error": "missing"
+        },
+        "latch": {
+          "latchedAt": 1794201002,
+          "rootId": null
+        },
+        "events": [
+          "response_signature_latched",
+          "response_verification_failed"
+        ]
+      }
+    },
+    {
+      "name": "refused_already_latched",
+      "description": "A refused signed answer from a latched origin: no second latch.",
+      "mode": "when-present",
+      "roots": true,
+      "latchedBefore": true,
+      "answer": "unknown_root",
+      "expected": {
+        "result": {
+          "error": "unknown_root"
+        },
+        "latch": {
+          "latchedAt": 1794200000,
+          "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df"
+        },
+        "events": [
+          "response_verification_failed"
+        ]
+      }
+    },
+    {
+      "name": "signed_without_roots_latches",
+      "description": "A signed answer to a client with no roots (a release candidate once production signs): ConfigurationError, and latched with rootId null, so a signature stripped from the next answer is refused.",
+      "mode": "when-present",
+      "roots": false,
+      "latchedBefore": false,
+      "answer": "valid_current_root",
+      "expected": {
+        "result": {
+          "configurationError": true
+        },
+        "latch": {
+          "latchedAt": 1794201002,
+          "rootId": null
+        },
+        "events": [
+          "response_signature_latched"
+        ]
+      }
+    },
+    {
+      "name": "signed_without_roots_required",
+      "description": "The same in required mode.",
+      "mode": "required",
+      "roots": false,
+      "latchedBefore": false,
+      "answer": "valid_current_root",
+      "expected": {
+        "result": {
+          "configurationError": true
+        },
+        "latch": {
+          "latchedAt": 1794201002,
+          "rootId": null
+        },
+        "events": [
+          "response_signature_latched"
+        ]
+      }
+    },
+    {
+      "name": "signed_without_roots_already_latched",
+      "description": "The same on a latched origin: no second latch.",
+      "mode": "when-present",
+      "roots": false,
+      "latchedBefore": true,
+      "answer": "valid_current_root",
+      "expected": {
+        "result": {
+          "configurationError": true
+        },
+        "latch": {
+          "latchedAt": 1794200000,
+          "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df"
+        },
+        "events": []
+      }
+    }
+  ]
+}

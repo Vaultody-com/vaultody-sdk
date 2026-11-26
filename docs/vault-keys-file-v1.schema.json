@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Vaultody-com/vaultody-sdk/docs/vault-keys-file-v1.schema.json",
+  "title": "Vaultody vault keys file, v1",
+  "description": "The vault xpub pins and the response-signature latch, per API origin. Every SDK (Node, Python, PHP) reads and writes exactly this layout (docs/vault-keys-file.md); test-vectors/vault-keys-file-v1.json is the executable form of this schema and wins where they differ. Anything not allowed here is refused, never ignored: a file that does not match fails closed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "origins"],
+  "properties": {
+    "format": { "const": "vaultody vault keys v1" },
+    "origins": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/origin" },
+      "additionalProperties": { "$ref": "#/$defs/originEntry" }
+    }
+  },
+  "$defs": {
+    "origin": {
+      "description": "The API origin the entry belongs to: scheme, lowercase host, port only when not the scheme's default. Pins of one origin never apply to another.",
+      "type": "string",
+      "pattern": "^https?://[^/?#@\\s]+$"
+    },
+    "time": {
+      "description": "Unix seconds, a JSON integer written without a fraction or an exponent.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "text": { "type": "string", "minLength": 1 },
+    "originEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["responseSignature", "vaults", "audit"],
+      "properties": {
+        "responseSignature": {
+          "description": "The latch: null until a response carrying a response signature (any of the four x-api-response-* headers) came from this origin, verified or not; then set once and never cleared by a client. From then on an unsigned response from the origin is refused. rootId is the root that verified that response, or null when it did not verify (refused, or no root to check it with).",
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["latchedAt", "rootId"],
+              "properties": {
+                "latchedAt": { "$ref": "#/$defs/time" },
+                "rootId": { "oneOf": [{ "$ref": "#/$defs/text" }, { "type": "null" }] }
+              }
+            }
+          ]
+        },
+        "vaults": {
+          "description": "vaultId → pin; each pin's vaultId equals its key.",
+          "type": "object",
+          "propertyNames": { "minLength": 1 },
+          "additionalProperties": { "$ref": "#/$defs/pin" }
+        },
+        "audit": {
+          "description": "Every explicit replacement or removal of a pin (the administrative replace; the transport never writes one), oldest first.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/auditEntry" }
+        }
+      }
+    },
+    "pin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["vaultId", "type", "keys", "status", "firstSeenAt", "verifiedAt", "verification"],
+      "properties": {
+        "vaultId": { "$ref": "#/$defs/text" },
+        "type": { "enum": ["main", "test"] },
+        "keys": {
+          "description": "The xpub of each MPC algorithm as first seen; null for an algorithm the vault did not have. At least one is not null.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ECDSA", "EDDSA"],
+          "properties": {
+            "ECDSA": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/text" }] },
+            "EDDSA": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/text" }] }
+          },
+          "not": { "properties": { "ECDSA": { "type": "null" }, "EDDSA": { "type": "null" } } }
+        },
+        "status": { "enum": ["verified", "unverified"] },
+        "firstSeenAt": { "$ref": "#/$defs/time" },
+        "verifiedAt": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/time" }] },
+        "verification": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["rootId", "timestamp"],
+              "properties": {
+                "rootId": { "$ref": "#/$defs/text" },
+                "timestamp": { "$ref": "#/$defs/time" }
+              }
+            }
+          ]
+        }
+      },
+      "if": { "properties": { "status": { "const": "verified" } } },
+      "then": { "properties": { "verifiedAt": { "$ref": "#/$defs/time" }, "verification": { "type": "object" } } },
+      "else": { "properties": { "verifiedAt": { "type": "null" }, "verification": { "type": "null" } } }
+    },
+    "auditEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["vaultId", "at", "reason", "removed"],
+      "properties": {
+        "vaultId": { "$ref": "#/$defs/text" },
+        "at": { "$ref": "#/$defs/time" },
+        "reason": { "type": "string", "pattern": "\\S" },
+        "removed": { "type": "boolean" }
+      }
+    }
+  }
+}

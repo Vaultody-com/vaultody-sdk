@@ -1,0 +1,2082 @@
+{
+  "format": "vaultody vault xpub pins, v1",
+  "warning": "TEST-ONLY KEYS AND SECRETS. Every secret and private key in this file is public. Never use them outside tests.",
+  "source": {
+    "generator": "test-vectors/tools/generate-gateway-vectors.js",
+    "gateway": {
+      "commit": "1a84dd507bb72153e2f2238fea9ac299935cc7fe"
+    },
+    "responses": "signed with the gateway's response-signing helpers, pod key 1 and the certificates of v1.json; every signature verdict checked with its reference verifier"
+  },
+  "model": {
+    "pin": "{ vaultId, type: \"main\"|\"test\", keys: { ECDSA: xpub|null, EDDSA: xpub|null }, status: \"verified\"|\"unverified\", firstSeenAt: Unix seconds, verifiedAt: Unix seconds|null, verification: { rootId, timestamp }|null }",
+    "configuredPin": "{ vaultId, type: \"main\"|\"test\", keys: { ECDSA: xpub|null, EDDSA: xpub|null } }, at least one xpub, no other field: a pin given in the client configuration (Node pinnedVaultKeys, Python pinned_vault_keys, PHP pinnedVaultKeys), for the client's API origin",
+    "status": "verified: a signed answer (checked against a pinned root) showed these xpubs, or the pin was given in configuration. unverified: only an unsigned answer did, trust on first use; allowed for release candidates while prod does not sign, never reported as verified, and confirmed by the first signed answer that shows the same xpubs.",
+    "addressCheck": "verified (derives from a verified or configured pin) | unverified (derives from an unverified pin) | not_verifiable (a vault without MPC keys, such as SMART, or an address without its derivation path) | mismatch or path_missing, which are errors",
+    "pathRequired": "An address without its derivation path is path_missing, an error, only when all hold: the client's requireAddressPaths is on (Python require_address_paths; its default is the build constant ADDRESS_PATHS_PUBLIC, false while the paths are hidden), the operation is generateDepositAddress, its vault has MPC keys (pinned, or pinned now from the vault lists), and its chain is one the SDK can derive. Lists and addAssetToVaultAccount may answer older rows without a path: not_verifiable.",
+    "scope": "pins are kept per API origin, so test and production pins never mix; these cases are all one origin"
+  },
+  "rules": {
+    "order": "Verify the answer first (requireResponseSignature false: signed answers must verify, unsigned ones are accepted as unsigned). A refused answer touches no pin.",
+    "vaults": "Each item of data.items: id, type and the xpub of each algorithm in mpcKeys (algorithm read in uppercase; the first entry of an algorithm counts; algorithms other than ECDSA and EDDSA are ignored). An item without any such key has nothing to pin and is not_verifiable.",
+    "outcomes": "No pin yet: pinned, verified if the answer was signed, else unverified. Same xpubs as the pin: unchanged, except an unverified pin and a signed answer, which is upgraded to verified. A pinned xpub that differs or is missing: an alarm.",
+    "alarm": "Any alarm refuses the whole answer: no pin is written or changed, not even for other vaults in it. Each alarm names the vault, the algorithm, the reason (xpub_changed, xpub_missing, xpub_added, type_changed) and the first 16 hex characters of SHA-256 of each xpub (never the xpub itself; null where there is none), ECDSA before EDDSA, then the type, in the order of the answer.",
+    "refused": "A pinned vault that gains an algorithm it did not have (xpub_added: pinned null, seen the hash of the new xpub) and a vault whose type changes (type_changed: algorithm, pinned and seen null) are alarms like any other: refused, fail closed. The client confirms a legitimate change out of band and re-pins the vault: the command line (npx @vaultody/sdk vault-keys accept) or the store's replace.",
+    "configured": "A configured pin counts as verified: its vault's status is verified, and an address that derives from it is verified. It is compared with every answer, signed or not, exactly as a stored pin, and any difference is the alarm. It is never written to the store, and the stored pin of the same vault, if any, is neither read nor changed: the configured pin takes its place. Vaults not configured are pinned in the store as usual."
+  },
+  "caseFormat": {
+    "initialPins": "the pins in the store before the first step",
+    "configuredPins": "the pins given in configuration for the whole case (configuredPin); pinsAfter never holds them, and the status of a configured vault is verified",
+    "steps": "each: the request as sent, the response as received, now, and expected: signature (verified | absent | { error }), outcomes per vault in the order of the answer, or alarms; pinsAfter is every pin after the step, sorted by vaultId",
+    "addressChecks": "pin status (verified, unverified, configured, or null), whether the vault has MPC keys, whether the address carries its derivation path, the derivation result, and pathRequired when the case is about it ({ requireAddressPaths, operationId, chainKnown }; absent: requireAddressPaths off) → expected status or error",
+    "roots": "the roots to pin are v1.json keys.roots current and next"
+  },
+  "pinnedRoots": [
+    "current",
+    "next"
+  ],
+  "cases": [
+    {
+      "name": "first_sight_signed",
+      "description": "A vault seen for the first time in a signed answer is pinned as verified, with the root and the response time as evidence.",
+      "initialPins": [],
+      "configuredPins": [],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "x-api-response-sign": "kBLKuwvnyUHG+/j2ci8Y2SFBe5ZwuuBrwULFN/+IfiS5zj5D9nmkq1/UfGUsbUpAIgrZvzjkvgGyvvG8O6MBBQ==",
+              "x-api-response-timestamp": "1794201000",
+              "x-api-response-sign-version": "1",
+              "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+            },
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY2MU15TXdBcVJiY0Z0WGdTNXNZSkFCcXFHOVlMbUM0UTFSZGFwOWdTRThOcXR3eWJHaGVQWTJnWjI5RVNGanFKb0N1MVJ1cGplOFl0R3FzZWZEMjY1VE1nN3VzVURGZHA2VzFFR01jZXQ4In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjYxTXlNd0FxUmJjRjdoOUpYeDZWWDNkOG1YNEM4UUg2Y2VmakFZR0NSU0hNWXdhOVlnRmVvYmdmWjkzZTRkQ3JzUVR4VTJkQW40S0JQeGFOalJ2VDRVc3dTbVNrV3BCUDlnbjZMU3pSR0gifV19XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "verified",
+            "outcomes": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "outcome": "pinned"
+              }
+            ],
+            "pinsAfter": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "verified",
+                "firstSeenAt": 1794201002,
+                "verifiedAt": 1794201002,
+                "verification": {
+                  "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+                  "timestamp": 1794201000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "first_sight_unsigned",
+      "description": "A vault seen for the first time in an unsigned answer (prod does not sign yet) is pinned as unverified: trust on first use.",
+      "initialPins": [],
+      "configuredPins": [],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {},
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY2MU15TXdBcVJiY0Z0WGdTNXNZSkFCcXFHOVlMbUM0UTFSZGFwOWdTRThOcXR3eWJHaGVQWTJnWjI5RVNGanFKb0N1MVJ1cGplOFl0R3FzZWZEMjY1VE1nN3VzVURGZHA2VzFFR01jZXQ4In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjYxTXlNd0FxUmJjRjdoOUpYeDZWWDNkOG1YNEM4UUg2Y2VmakFZR0NSU0hNWXdhOVlnRmVvYmdmWjkzZTRkQ3JzUVR4VTJkQW40S0JQeGFOalJ2VDRVc3dTbVNrV3BCUDlnbjZMU3pSR0gifV19XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "absent",
+            "outcomes": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "outcome": "pinned"
+              }
+            ],
+            "pinsAfter": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "unverified",
+                "firstSeenAt": 1794201002,
+                "verifiedAt": null,
+                "verification": null
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "unverified_confirmed_by_signed",
+      "description": "An unverified pin is confirmed by a later signed answer with the same xpubs: it becomes verified, and keeps the time it was first seen.",
+      "initialPins": [],
+      "configuredPins": [],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {},
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY2MU15TXdBcVJiY0Z0WGdTNXNZSkFCcXFHOVlMbUM0UTFSZGFwOWdTRThOcXR3eWJHaGVQWTJnWjI5RVNGanFKb0N1MVJ1cGplOFl0R3FzZWZEMjY1VE1nN3VzVURGZHA2VzFFR01jZXQ4In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjYxTXlNd0FxUmJjRjdoOUpYeDZWWDNkOG1YNEM4UUg2Y2VmakFZR0NSU0hNWXdhOVlnRmVvYmdmWjkzZTRkQ3JzUVR4VTJkQW40S0JQeGFOalJ2VDRVc3dTbVNrV3BCUDlnbjZMU3pSR0gifV19XX19"
+          },
+          "now": 1794200942,
+          "expected": {
+            "signature": "absent",
+            "outcomes": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "outcome": "pinned"
+              }
+            ],
+            "pinsAfter": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "unverified",
+                "firstSeenAt": 1794200942,
+                "verifiedAt": null,
+                "verification": null
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "x-api-response-sign": "kGQ9rw3ouP+5jjAyOzNLOTvtVzcUU9ysm0XRbKCm3PLKEfeUaFYO1kge3CKZRxTMCvsBF12vZq4fks9MBTsnBw==",
+              "x-api-response-timestamp": "1794201000",
+              "x-api-response-sign-version": "1",
+              "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+            },
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMiIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY2MU15TXdBcVJiY0Z0WGdTNXNZSkFCcXFHOVlMbUM0UTFSZGFwOWdTRThOcXR3eWJHaGVQWTJnWjI5RVNGanFKb0N1MVJ1cGplOFl0R3FzZWZEMjY1VE1nN3VzVURGZHA2VzFFR01jZXQ4In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjYxTXlNd0FxUmJjRjdoOUpYeDZWWDNkOG1YNEM4UUg2Y2VmakFZR0NSU0hNWXdhOVlnRmVvYmdmWjkzZTRkQ3JzUVR4VTJkQW40S0JQeGFOalJ2VDRVc3dTbVNrV3BCUDlnbjZMU3pSR0gifV19XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "verified",
+            "outcomes": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "outcome": "upgraded"
+              }
+            ],
+            "pinsAfter": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "verified",
+                "firstSeenAt": 1794200942,
+                "verifiedAt": 1794201002,
+                "verification": {
+                  "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+                  "timestamp": 1794201000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "unverified_contradicted_by_signed",
+      "description": "A signed answer shows another xpub than the unverified pin: the alarm. The pin stays as it was and the answer is refused.",
+      "initialPins": [],
+      "configuredPins": [],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {},
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY2MU15TXdBcVJiY0Z0WGdTNXNZSkFCcXFHOVlMbUM0UTFSZGFwOWdTRThOcXR3eWJHaGVQWTJnWjI5RVNGanFKb0N1MVJ1cGplOFl0R3FzZWZEMjY1VE1nN3VzVURGZHA2VzFFR01jZXQ4In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjYxTXlNd0FxUmJjRjdoOUpYeDZWWDNkOG1YNEM4UUg2Y2VmakFZR0NSU0hNWXdhOVlnRmVvYmdmWjkzZTRkQ3JzUVR4VTJkQW40S0JQeGFOalJ2VDRVc3dTbVNrV3BCUDlnbjZMU3pSR0gifV19XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "absent",
+            "outcomes": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "outcome": "pinned"
+              }
+            ],
+            "pinsAfter": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "unverified",
+                "firstSeenAt": 1794201002,
+                "verifiedAt": null,
+                "verification": null
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "x-api-response-sign": "6tsEwEwhpfn0RmjlXUgKe3sPz/1Ql1qrm7cByhC3saxUM7An+xBFq/ZMeKADr3dBVdHIG138YtPjACIwkFh9AQ==",
+              "x-api-response-timestamp": "1794201000",
+              "x-api-response-sign-version": "1",
+              "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+            },
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMiIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY4R215NUVkdmdpYlFWZlBkcWtCQkNIeEE1aHRpcWc1NWNyWFl1WG9RUktmREJGQTFXRWpXZ1A2TEhod0JaZU5LMVZUc2ZURlVIQ2RyZnAxYmd3UTl4djVza2k4UFg5ckwyZFpYdmdHRG53In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjYxTXlNd0FxUmJjRjdoOUpYeDZWWDNkOG1YNEM4UUg2Y2VmakFZR0NSU0hNWXdhOVlnRmVvYmdmWjkzZTRkQ3JzUVR4VTJkQW40S0JQeGFOalJ2VDRVc3dTbVNrV3BCUDlnbjZMU3pSR0gifV19XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "verified",
+            "alarms": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "algorithm": "ECDSA",
+                "reason": "xpub_changed",
+                "pinned": "ec71164a05b609c1",
+                "seen": "1f1bfecfabc41a02"
+              }
+            ],
+            "pinsAfter": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "unverified",
+                "firstSeenAt": 1794201002,
+                "verifiedAt": null,
+                "verification": null
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "verified_then_unsigned_same",
+      "description": "An unsigned answer with the same xpubs leaves a verified pin verified.",
+      "initialPins": [
+        {
+          "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+          "type": "main",
+          "keys": {
+            "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+            "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+          },
+          "status": "verified",
+          "firstSeenAt": 1794201002,
+          "verifiedAt": 1794201002,
+          "verification": {
+            "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+            "timestamp": 1794201000
+          }
+        }
+      ],
+      "configuredPins": [],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {},
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY2MU15TXdBcVJiY0Z0WGdTNXNZSkFCcXFHOVlMbUM0UTFSZGFwOWdTRThOcXR3eWJHaGVQWTJnWjI5RVNGanFKb0N1MVJ1cGplOFl0R3FzZWZEMjY1VE1nN3VzVURGZHA2VzFFR01jZXQ4In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjYxTXlNd0FxUmJjRjdoOUpYeDZWWDNkOG1YNEM4UUg2Y2VmakFZR0NSU0hNWXdhOVlnRmVvYmdmWjkzZTRkQ3JzUVR4VTJkQW40S0JQeGFOalJ2VDRVc3dTbVNrV3BCUDlnbjZMU3pSR0gifV19XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "absent",
+            "outcomes": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "outcome": "unchanged"
+              }
+            ],
+            "pinsAfter": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "verified",
+                "firstSeenAt": 1794201002,
+                "verifiedAt": 1794201002,
+                "verification": {
+                  "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+                  "timestamp": 1794201000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "verified_then_changed_unsigned",
+      "description": "An unsigned answer with another ECDSA xpub: the alarm.",
+      "initialPins": [
+        {
+          "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+          "type": "main",
+          "keys": {
+            "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+            "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+          },
+          "status": "verified",
+          "firstSeenAt": 1794201002,
+          "verifiedAt": 1794201002,
+          "verification": {
+            "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+            "timestamp": 1794201000
+          }
+        }
+      ],
+      "configuredPins": [],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {},
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY4R215NUVkdmdpYlFWZlBkcWtCQkNIeEE1aHRpcWc1NWNyWFl1WG9RUktmREJGQTFXRWpXZ1A2TEhod0JaZU5LMVZUc2ZURlVIQ2RyZnAxYmd3UTl4djVza2k4UFg5ckwyZFpYdmdHRG53In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjYxTXlNd0FxUmJjRjdoOUpYeDZWWDNkOG1YNEM4UUg2Y2VmakFZR0NSU0hNWXdhOVlnRmVvYmdmWjkzZTRkQ3JzUVR4VTJkQW40S0JQeGFOalJ2VDRVc3dTbVNrV3BCUDlnbjZMU3pSR0gifV19XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "absent",
+            "alarms": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "algorithm": "ECDSA",
+                "reason": "xpub_changed",
+                "pinned": "ec71164a05b609c1",
+                "seen": "1f1bfecfabc41a02"
+              }
+            ],
+            "pinsAfter": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "verified",
+                "firstSeenAt": 1794201002,
+                "verifiedAt": 1794201002,
+                "verification": {
+                  "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+                  "timestamp": 1794201000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "verified_then_changed_signed",
+      "description": "Even a signed answer never re-pins a changed xpub: the alarm, and only an explicit replace (support, CLI) changes a pin.",
+      "initialPins": [
+        {
+          "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+          "type": "main",
+          "keys": {
+            "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+            "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+          },
+          "status": "verified",
+          "firstSeenAt": 1794201002,
+          "verifiedAt": 1794201002,
+          "verification": {
+            "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+            "timestamp": 1794201000
+          }
+        }
+      ],
+      "configuredPins": [],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "x-api-response-sign": "E1oFfeqwl//GDcSxuG+nrM89/U1RFcl5T7yV9c/5N8CYz6KTbG2ksZ6ZGv0yO1VJlZpeUqVX5uu56Fk662veAw==",
+              "x-api-response-timestamp": "1794201000",
+              "x-api-response-sign-version": "1",
+              "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+            },
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY2MU15TXdBcVJiY0Z0WGdTNXNZSkFCcXFHOVlMbUM0UTFSZGFwOWdTRThOcXR3eWJHaGVQWTJnWjI5RVNGanFKb0N1MVJ1cGplOFl0R3FzZWZEMjY1VE1nN3VzVURGZHA2VzFFR01jZXQ4In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjlSazMxbXdiUTE3eFlzblVkeWd3VXBvalZFc2FEeGk3UlBRV1pjZ2liNk5UTlRaU1RRSENzTWFicDVLUVFaWjJrUDJrcFZFdDZEUE1KMkxMVEJKYlNDdVF2OURaOGJKajRxU3ZTY2ZmUUYifV19XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "verified",
+            "alarms": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "algorithm": "EDDSA",
+                "reason": "xpub_changed",
+                "pinned": "7750deb1dd993397",
+                "seen": "44d87c82577451c0"
+              }
+            ],
+            "pinsAfter": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "verified",
+                "firstSeenAt": 1794201002,
+                "verifiedAt": 1794201002,
+                "verification": {
+                  "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+                  "timestamp": 1794201000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "pinned_algorithm_disappears",
+      "description": "A pinned algorithm missing from the answer is the alarm too.",
+      "initialPins": [
+        {
+          "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+          "type": "main",
+          "keys": {
+            "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+            "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+          },
+          "status": "verified",
+          "firstSeenAt": 1794201002,
+          "verifiedAt": 1794201002,
+          "verification": {
+            "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+            "timestamp": 1794201000
+          }
+        }
+      ],
+      "configuredPins": [],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "x-api-response-sign": "0HtU3no0+8qHz1aUPZaUlaDinxtzzQmzdnmWI4HFY3oVTsvHfYCvuAkwsiyldrHhJfE6v58shpVpGnrYLsxHAg==",
+              "x-api-response-timestamp": "1794201000",
+              "x-api-response-sign-version": "1",
+              "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+            },
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY2MU15TXdBcVJiY0Z0WGdTNXNZSkFCcXFHOVlMbUM0UTFSZGFwOWdTRThOcXR3eWJHaGVQWTJnWjI5RVNGanFKb0N1MVJ1cGplOFl0R3FzZWZEMjY1VE1nN3VzVURGZHA2VzFFR01jZXQ4In1dfV19fQ=="
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "verified",
+            "alarms": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "algorithm": "EDDSA",
+                "reason": "xpub_missing",
+                "pinned": "7750deb1dd993397",
+                "seen": null
+              }
+            ],
+            "pinsAfter": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "verified",
+                "firstSeenAt": 1794201002,
+                "verifiedAt": 1794201002,
+                "verification": {
+                  "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+                  "timestamp": 1794201000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "two_algorithms_changed",
+      "description": "Both xpubs changed: one alarm entry per algorithm, ECDSA first.",
+      "initialPins": [
+        {
+          "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+          "type": "main",
+          "keys": {
+            "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+            "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+          },
+          "status": "verified",
+          "firstSeenAt": 1794201002,
+          "verifiedAt": 1794201002,
+          "verification": {
+            "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+            "timestamp": 1794201000
+          }
+        }
+      ],
+      "configuredPins": [],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "x-api-response-sign": "bMmQ8Sk4UuJ6WftZodkK2+So+hqqPB9UDSFrwuO3NvXWJ/QDA6rKHmnQj1h5G6mmfRMssYyRgCuBtFXdYq1UBw==",
+              "x-api-response-timestamp": "1794201000",
+              "x-api-response-sign-version": "1",
+              "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+            },
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY4R215NUVkdmdpYlFWZlBkcWtCQkNIeEE1aHRpcWc1NWNyWFl1WG9RUktmREJGQTFXRWpXZ1A2TEhod0JaZU5LMVZUc2ZURlVIQ2RyZnAxYmd3UTl4djVza2k4UFg5ckwyZFpYdmdHRG53In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjlSazMxbXdiUTE3eFlzblVkeWd3VXBvalZFc2FEeGk3UlBRV1pjZ2liNk5UTlRaU1RRSENzTWFicDVLUVFaWjJrUDJrcFZFdDZEUE1KMkxMVEJKYlNDdVF2OURaOGJKajRxU3ZTY2ZmUUYifV19XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "verified",
+            "alarms": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "algorithm": "ECDSA",
+                "reason": "xpub_changed",
+                "pinned": "ec71164a05b609c1",
+                "seen": "1f1bfecfabc41a02"
+              },
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "algorithm": "EDDSA",
+                "reason": "xpub_changed",
+                "pinned": "7750deb1dd993397",
+                "seen": "44d87c82577451c0"
+              }
+            ],
+            "pinsAfter": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "verified",
+                "firstSeenAt": 1794201002,
+                "verifiedAt": 1794201002,
+                "verification": {
+                  "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+                  "timestamp": 1794201000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "alarm_refuses_whole_answer",
+      "description": "One vault alarms and another is new: the whole answer is refused, so the new vault is not pinned either.",
+      "initialPins": [
+        {
+          "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+          "type": "main",
+          "keys": {
+            "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+            "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+          },
+          "status": "verified",
+          "firstSeenAt": 1794201002,
+          "verifiedAt": 1794201002,
+          "verification": {
+            "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+            "timestamp": 1794201000
+          }
+        }
+      ],
+      "configuredPins": [],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "x-api-response-sign": "EIX0KlfAWQ0gxeQ1V6TXsbVZbuWqVtXsAXkCs3TuWtMzYs8nFXk0Q9BqlaeFELB2i2eJAmYmCOL4E2O6XBntCw==",
+              "x-api-response-timestamp": "1794201000",
+              "x-api-response-sign-version": "1",
+              "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+            },
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY4R215NUVkdmdpYlFWZlBkcWtCQkNIeEE1aHRpcWc1NWNyWFl1WG9RUktmREJGQTFXRWpXZ1A2TEhod0JaZU5LMVZUc2ZURlVIQ2RyZnAxYmd3UTl4djVza2k4UFg5ckwyZFpYdmdHRG53In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjYxTXlNd0FxUmJjRjdoOUpYeDZWWDNkOG1YNEM4UUg2Y2VmakFZR0NSU0hNWXdhOVlnRmVvYmdmWjkzZTRkQ3JzUVR4VTJkQW40S0JQeGFOalJ2VDRVc3dTbVNrV3BCUDlnbjZMU3pSR0gifV19LHsiYmFja3VwZWQiOnRydWUsImNoYW5nZUFkZHJlc3Nlc0NvdW50IjowLCJjb2xvciI6IiMyNjg0RkYiLCJjcmVhdGVkVGltZXN0YW1wIjoxNzI1NDU4MTA5LCJkZXBvc2l0QWRkcmVzc2VzQ291bnQiOjMsImlkIjoiNjYzMGYxYzJhOWU0YjVkN2M4ZTlmMGMzIiwibmFtZSI6IlZhdWx0IGMzIiwidHlwZSI6Im1haW4iLCJtcGNLZXlzIjpbeyJhbGdvcml0aG0iOiJFQ0RTQSIsInhwdWIiOiJ4cHViNjYxTXlNd0FxUmJjRnRYZ1M1c1lKQUJxcUc5WUxtQzRRMVJkYXA5Z1NFOE5xdHd5YkdoZVBZMmdaMjlFU0ZqcUpvQ3UxUnVwamU4WXRHcXNlZkQyNjVUTWc3dXNVREZkcDZXMUVHTWNldDgifV19XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "verified",
+            "alarms": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "algorithm": "ECDSA",
+                "reason": "xpub_changed",
+                "pinned": "ec71164a05b609c1",
+                "seen": "1f1bfecfabc41a02"
+              }
+            ],
+            "pinsAfter": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "verified",
+                "firstSeenAt": 1794201002,
+                "verifiedAt": 1794201002,
+                "verification": {
+                  "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+                  "timestamp": 1794201000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "smart_vault_not_verifiable",
+      "description": "A vault without MPC keys (SMART or AUTOMATION) has nothing to pin: not verifiable, never verified.",
+      "initialPins": [],
+      "configuredPins": [],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "x-api-response-sign": "rpG3qjN8BGrQB812EzJ3YZIr4nCzlSCTuqI4xXI4ABqg/n/eP6hTN7IASBlzEN0SDP5Kw8GRJyilZhVBX2K1Cg==",
+              "x-api-response-timestamp": "1794201000",
+              "x-api-response-sign-version": "1",
+              "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+            },
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBkNyIsIm5hbWUiOiJWYXVsdCBkNyIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W119XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "verified",
+            "outcomes": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0d7",
+                "outcome": "not_verifiable"
+              }
+            ],
+            "pinsAfter": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "smart_vault_without_mpc_keys_field",
+      "description": "mpcKeys absent altogether (the field is hidden until the SDK ships): not verifiable as well.",
+      "initialPins": [],
+      "configuredPins": [],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "x-api-response-sign": "Amjc9twsW2jxfWMorT0cOSe5wjkijzP6wcfya8ojy1pMLN+78AC+A452OS55BJfCLsn6BVvjPE+IsNJHQEkVAQ==",
+              "x-api-response-timestamp": "1794201000",
+              "x-api-response-sign-version": "1",
+              "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+            },
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBkNyIsIm5hbWUiOiJWYXVsdCBkNyIsInR5cGUiOiJtYWluIn1dfX0="
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "verified",
+            "outcomes": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0d7",
+                "outcome": "not_verifiable"
+              }
+            ],
+            "pinsAfter": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "other_vaults_untouched",
+      "description": "A page that does not list a pinned vault leaves its pin as it is: lists are paged.",
+      "initialPins": [
+        {
+          "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+          "type": "main",
+          "keys": {
+            "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+            "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+          },
+          "status": "verified",
+          "firstSeenAt": 1794201002,
+          "verifiedAt": 1794201002,
+          "verification": {
+            "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+            "timestamp": 1794201000
+          }
+        },
+        {
+          "vaultId": "6630f1c2a9e4b5d7c8e9f0c3",
+          "type": "main",
+          "keys": {
+            "ECDSA": "xpub68Gmy5EdvgibQVfPdqkBBCHxA5htiqg55crXYuXoQRKfDBFA1WEjWgP6LHhwBZeNK1VTsfTFUHCdrfp1bgwQ9xv5ski8PX9rL2dZXvgGDnw",
+            "EDDSA": null
+          },
+          "status": "verified",
+          "firstSeenAt": 1794201002,
+          "verifiedAt": 1794201002,
+          "verification": {
+            "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+            "timestamp": 1794201000
+          }
+        }
+      ],
+      "configuredPins": [],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "x-api-response-sign": "kBLKuwvnyUHG+/j2ci8Y2SFBe5ZwuuBrwULFN/+IfiS5zj5D9nmkq1/UfGUsbUpAIgrZvzjkvgGyvvG8O6MBBQ==",
+              "x-api-response-timestamp": "1794201000",
+              "x-api-response-sign-version": "1",
+              "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+            },
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY2MU15TXdBcVJiY0Z0WGdTNXNZSkFCcXFHOVlMbUM0UTFSZGFwOWdTRThOcXR3eWJHaGVQWTJnWjI5RVNGanFKb0N1MVJ1cGplOFl0R3FzZWZEMjY1VE1nN3VzVURGZHA2VzFFR01jZXQ4In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjYxTXlNd0FxUmJjRjdoOUpYeDZWWDNkOG1YNEM4UUg2Y2VmakFZR0NSU0hNWXdhOVlnRmVvYmdmWjkzZTRkQ3JzUVR4VTJkQW40S0JQeGFOalJ2VDRVc3dTbVNrV3BCUDlnbjZMU3pSR0gifV19XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "verified",
+            "outcomes": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "outcome": "unchanged"
+              }
+            ],
+            "pinsAfter": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "verified",
+                "firstSeenAt": 1794201002,
+                "verifiedAt": 1794201002,
+                "verification": {
+                  "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+                  "timestamp": 1794201000
+                }
+              },
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0c3",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub68Gmy5EdvgibQVfPdqkBBCHxA5htiqg55crXYuXoQRKfDBFA1WEjWgP6LHhwBZeNK1VTsfTFUHCdrfp1bgwQ9xv5ski8PX9rL2dZXvgGDnw",
+                  "EDDSA": null
+                },
+                "status": "verified",
+                "firstSeenAt": 1794201002,
+                "verifiedAt": 1794201002,
+                "verification": {
+                  "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+                  "timestamp": 1794201000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "several_vaults_first_sight",
+      "description": "Several new vaults in one signed answer are all pinned, in the order of the answer.",
+      "initialPins": [],
+      "configuredPins": [],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "x-api-response-sign": "wRoWdMk+cs/GYrIw0pSIg8sUK+DrVrpTQq0JaEdy002vVoB/z2A0yK6PC8kW4kKdn9Yu0QL/vuOFGB+uqp+zDg==",
+              "x-api-response-timestamp": "1794201000",
+              "x-api-response-sign-version": "1",
+              "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+            },
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBjMyIsIm5hbWUiOiJWYXVsdCBjMyIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY4R215NUVkdmdpYlFWZlBkcWtCQkNIeEE1aHRpcWc1NWNyWFl1WG9RUktmREJGQTFXRWpXZ1A2TEhod0JaZU5LMVZUc2ZURlVIQ2RyZnAxYmd3UTl4djVza2k4UFg5ckwyZFpYdmdHRG53In1dfSx7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY2MU15TXdBcVJiY0Z0WGdTNXNZSkFCcXFHOVlMbUM0UTFSZGFwOWdTRThOcXR3eWJHaGVQWTJnWjI5RVNGanFKb0N1MVJ1cGplOFl0R3FzZWZEMjY1VE1nN3VzVURGZHA2VzFFR01jZXQ4In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjYxTXlNd0FxUmJjRjdoOUpYeDZWWDNkOG1YNEM4UUg2Y2VmakFZR0NSU0hNWXdhOVlnRmVvYmdmWjkzZTRkQ3JzUVR4VTJkQW40S0JQeGFOalJ2VDRVc3dTbVNrV3BCUDlnbjZMU3pSR0gifV19LHsiYmFja3VwZWQiOnRydWUsImNoYW5nZUFkZHJlc3Nlc0NvdW50IjowLCJjb2xvciI6IiMyNjg0RkYiLCJjcmVhdGVkVGltZXN0YW1wIjoxNzI1NDU4MTA5LCJkZXBvc2l0QWRkcmVzc2VzQ291bnQiOjMsImlkIjoiNjYzMGYxYzJhOWU0YjVkN2M4ZTlmMGQ3IiwibmFtZSI6IlZhdWx0IGQ3IiwidHlwZSI6Im1haW4iLCJtcGNLZXlzIjpbXX1dfX0="
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "verified",
+            "outcomes": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0c3",
+                "outcome": "pinned"
+              },
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "outcome": "pinned"
+              },
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0d7",
+                "outcome": "not_verifiable"
+              }
+            ],
+            "pinsAfter": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "verified",
+                "firstSeenAt": 1794201002,
+                "verifiedAt": 1794201002,
+                "verification": {
+                  "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+                  "timestamp": 1794201000
+                }
+              },
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0c3",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub68Gmy5EdvgibQVfPdqkBBCHxA5htiqg55crXYuXoQRKfDBFA1WEjWgP6LHhwBZeNK1VTsfTFUHCdrfp1bgwQ9xv5ski8PX9rL2dZXvgGDnw",
+                  "EDDSA": null
+                },
+                "status": "verified",
+                "firstSeenAt": 1794201002,
+                "verifiedAt": 1794201002,
+                "verification": {
+                  "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+                  "timestamp": 1794201000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "next_root",
+      "description": "A signed answer certified by the next root pins as verified, with that root as evidence.",
+      "initialPins": [],
+      "configuredPins": [],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "x-api-response-sign": "0HtU3no0+8qHz1aUPZaUlaDinxtzzQmzdnmWI4HFY3oVTsvHfYCvuAkwsiyldrHhJfE6v58shpVpGnrYLsxHAg==",
+              "x-api-response-timestamp": "1794201000",
+              "x-api-response-sign-version": "1",
+              "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCjUxNjVhZTRlMGUyMTVkZDE3NzcwMDA5YTc3ZmRhZmZlYzJiNDRhNjg1ZjNjYjVjNGNiOWVlMDU5YjY2MzE1ODYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEYCIQDvvnfLIgvpZVJ9Pq3bqoZ9ymK9J/1f9MQh7fUbuJWZrgIhAIehJ+WNAblcrLIIYLooFpsZjJ0RIfaj7+jh9dGwqqKf"
+            },
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY2MU15TXdBcVJiY0Z0WGdTNXNZSkFCcXFHOVlMbUM0UTFSZGFwOWdTRThOcXR3eWJHaGVQWTJnWjI5RVNGanFKb0N1MVJ1cGplOFl0R3FzZWZEMjY1VE1nN3VzVURGZHA2VzFFR01jZXQ4In1dfV19fQ=="
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "verified",
+            "outcomes": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "outcome": "pinned"
+              }
+            ],
+            "pinsAfter": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": null
+                },
+                "status": "verified",
+                "firstSeenAt": 1794201002,
+                "verifiedAt": 1794201002,
+                "verification": {
+                  "rootId": "5165ae4e0e215dd17770009a77fdaffec2b44a685f3cb5c4cb9ee059b6631586",
+                  "timestamp": 1794201000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "algorithm_names_case_insensitive",
+      "description": "mpcKeys algorithm names are read in uppercase, as the API compares them.",
+      "initialPins": [],
+      "configuredPins": [],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "x-api-response-sign": "5ROr64UJo06+FeBaK8bHQ60sChmD5iitUhR9Et7KWYC1BDbKP/bFhrRbYYf5VT/OhnNLcsYbXCe9NS3HsL/5AA==",
+              "x-api-response-timestamp": "1794201000",
+              "x-api-response-sign-version": "1",
+              "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+            },
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiZWNkc2EiLCJ4cHViIjoieHB1YjY2MU15TXdBcVJiY0Z0WGdTNXNZSkFCcXFHOVlMbUM0UTFSZGFwOWdTRThOcXR3eWJHaGVQWTJnWjI5RVNGanFKb0N1MVJ1cGplOFl0R3FzZWZEMjY1VE1nN3VzVURGZHA2VzFFR01jZXQ4In0seyJhbGdvcml0aG0iOiJFZERTQSIsInhwdWIiOiJ4cHViNjYxTXlNd0FxUmJjRjdoOUpYeDZWWDNkOG1YNEM4UUg2Y2VmakFZR0NSU0hNWXdhOVlnRmVvYmdmWjkzZTRkQ3JzUVR4VTJkQW40S0JQeGFOalJ2VDRVc3dTbVNrV3BCUDlnbjZMU3pSR0gifV19XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "verified",
+            "outcomes": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "outcome": "pinned"
+              }
+            ],
+            "pinsAfter": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "verified",
+                "firstSeenAt": 1794201002,
+                "verifiedAt": 1794201002,
+                "verification": {
+                  "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+                  "timestamp": 1794201000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "first_key_of_an_algorithm_wins",
+      "description": "Two entries for one algorithm: the first counts, as on the server (mpcKeys.find); unknown algorithms are ignored.",
+      "initialPins": [],
+      "configuredPins": [],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "x-api-response-sign": "kWb8/qfei8goXXAbu46rTzIads5xTrdQonwubyQdCprzcYtlGqIuZCJohFa/Zi7I8AUTmbeNW6j9XQ/X2nZ8AA==",
+              "x-api-response-timestamp": "1794201000",
+              "x-api-response-sign-version": "1",
+              "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+            },
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY2MU15TXdBcVJiY0Z0WGdTNXNZSkFCcXFHOVlMbUM0UTFSZGFwOWdTRThOcXR3eWJHaGVQWTJnWjI5RVNGanFKb0N1MVJ1cGplOFl0R3FzZWZEMjY1VE1nN3VzVURGZHA2VzFFR01jZXQ4In0seyJhbGdvcml0aG0iOiJFQ0RTQSIsInhwdWIiOiJ4cHViNjhHbXk1RWR2Z2liUVZmUGRxa0JCQ0h4QTVodGlxZzU1Y3JYWXVYb1FSS2ZEQkZBMVdFaldnUDZMSGh3QlplTksxVlRzZlRGVUhDZHJmcDFiZ3dROXh2NXNraThQWDlyTDJkWlh2Z0dEbncifSx7ImFsZ29yaXRobSI6IlNDSE5PUlIiLCJ4cHViIjoieHB1YjY5UmszMW13YlExN3hZc25VZHlnd1Vwb2pWRXNhRHhpN1JQUVdaY2dpYjZOVE5UWlNUUUhDc01hYnA1S1FRWloya1Aya3BWRXQ2RFBNSjJMTFRCSmJTQ3VRdjlEWjhiSmo0cVN2U2NmZlFGIn1dfV19fQ=="
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "verified",
+            "outcomes": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "outcome": "pinned"
+              }
+            ],
+            "pinsAfter": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": null
+                },
+                "status": "verified",
+                "firstSeenAt": 1794201002,
+                "verifiedAt": 1794201002,
+                "verification": {
+                  "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+                  "timestamp": 1794201000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "tampered_signed_answer",
+      "description": "A signed answer changed on the way (another xpub): refused by the signature check before any pin is looked at.",
+      "initialPins": [],
+      "configuredPins": [],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "x-api-response-sign": "kBLKuwvnyUHG+/j2ci8Y2SFBe5ZwuuBrwULFN/+IfiS5zj5D9nmkq1/UfGUsbUpAIgrZvzjkvgGyvvG8O6MBBQ==",
+              "x-api-response-timestamp": "1794201000",
+              "x-api-response-sign-version": "1",
+              "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+            },
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY4R215NUVkdmdpYlFWZlBkcWtCQkNIeEE1aHRpcWc1NWNyWFl1WG9RUktmREJGQTFXRWpXZ1A2TEhod0JaZU5LMVZUc2ZURlVIQ2RyZnAxYmd3UTl4djVza2k4UFg5ckwyZFpYdmdHRG53In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjYxTXlNd0FxUmJjRjdoOUpYeDZWWDNkOG1YNEM4UUg2Y2VmakFZR0NSU0hNWXdhOVlnRmVvYmdmWjkzZTRkQ3JzUVR4VTJkQW40S0JQeGFOalJ2VDRVc3dTbVNrV3BCUDlnbjZMU3pSR0gifV19XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": {
+              "error": "invalid"
+            },
+            "pinsAfter": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "signature_partly_stripped",
+      "description": "A signed answer with one signature header removed is never treated as unsigned: refused, no pin.",
+      "initialPins": [],
+      "configuredPins": [],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "x-api-response-timestamp": "1794201000",
+              "x-api-response-sign-version": "1",
+              "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+            },
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY2MU15TXdBcVJiY0Z0WGdTNXNZSkFCcXFHOVlMbUM0UTFSZGFwOWdTRThOcXR3eWJHaGVQWTJnWjI5RVNGanFKb0N1MVJ1cGplOFl0R3FzZWZEMjY1VE1nN3VzVURGZHA2VzFFR01jZXQ4In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjYxTXlNd0FxUmJjRjdoOUpYeDZWWDNkOG1YNEM4UUg2Y2VmakFZR0NSU0hNWXdhOVlnRmVvYmdmWjkzZTRkQ3JzUVR4VTJkQW40S0JQeGFOalJ2VDRVc3dTbVNrV3BCUDlnbjZMU3pSR0gifV19XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": {
+              "error": "missing"
+            },
+            "pinsAfter": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "pinned_vault_gains_algorithm",
+      "description": "A pinned vault that gains an algorithm it did not have: refused (xpub_added), fail closed. A legitimate change is confirmed by the client and re-pinned (the command line, or the store's replace).",
+      "initialPins": [
+        {
+          "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+          "type": "main",
+          "keys": {
+            "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+            "EDDSA": null
+          },
+          "status": "verified",
+          "firstSeenAt": 1794201002,
+          "verifiedAt": 1794201002,
+          "verification": {
+            "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+            "timestamp": 1794201000
+          }
+        }
+      ],
+      "configuredPins": [],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "x-api-response-sign": "kBLKuwvnyUHG+/j2ci8Y2SFBe5ZwuuBrwULFN/+IfiS5zj5D9nmkq1/UfGUsbUpAIgrZvzjkvgGyvvG8O6MBBQ==",
+              "x-api-response-timestamp": "1794201000",
+              "x-api-response-sign-version": "1",
+              "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+            },
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY2MU15TXdBcVJiY0Z0WGdTNXNZSkFCcXFHOVlMbUM0UTFSZGFwOWdTRThOcXR3eWJHaGVQWTJnWjI5RVNGanFKb0N1MVJ1cGplOFl0R3FzZWZEMjY1VE1nN3VzVURGZHA2VzFFR01jZXQ4In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjYxTXlNd0FxUmJjRjdoOUpYeDZWWDNkOG1YNEM4UUg2Y2VmakFZR0NSU0hNWXdhOVlnRmVvYmdmWjkzZTRkQ3JzUVR4VTJkQW40S0JQeGFOalJ2VDRVc3dTbVNrV3BCUDlnbjZMU3pSR0gifV19XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "verified",
+            "alarms": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "algorithm": "EDDSA",
+                "reason": "xpub_added",
+                "pinned": null,
+                "seen": "7750deb1dd993397"
+              }
+            ],
+            "pinsAfter": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": null
+                },
+                "status": "verified",
+                "firstSeenAt": 1794201002,
+                "verifiedAt": 1794201002,
+                "verification": {
+                  "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+                  "timestamp": 1794201000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "vault_type_changed",
+      "description": "A vault pinned as a test vault is listed as a main vault: refused (type_changed), fail closed, until the client re-pins it.",
+      "initialPins": [
+        {
+          "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+          "type": "test",
+          "keys": {
+            "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+            "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+          },
+          "status": "verified",
+          "firstSeenAt": 1794201002,
+          "verifiedAt": 1794201002,
+          "verification": {
+            "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+            "timestamp": 1794201000
+          }
+        }
+      ],
+      "configuredPins": [],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "x-api-response-sign": "kBLKuwvnyUHG+/j2ci8Y2SFBe5ZwuuBrwULFN/+IfiS5zj5D9nmkq1/UfGUsbUpAIgrZvzjkvgGyvvG8O6MBBQ==",
+              "x-api-response-timestamp": "1794201000",
+              "x-api-response-sign-version": "1",
+              "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+            },
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY2MU15TXdBcVJiY0Z0WGdTNXNZSkFCcXFHOVlMbUM0UTFSZGFwOWdTRThOcXR3eWJHaGVQWTJnWjI5RVNGanFKb0N1MVJ1cGplOFl0R3FzZWZEMjY1VE1nN3VzVURGZHA2VzFFR01jZXQ4In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjYxTXlNd0FxUmJjRjdoOUpYeDZWWDNkOG1YNEM4UUg2Y2VmakFZR0NSU0hNWXdhOVlnRmVvYmdmWjkzZTRkQ3JzUVR4VTJkQW40S0JQeGFOalJ2VDRVc3dTbVNrV3BCUDlnbjZMU3pSR0gifV19XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "verified",
+            "alarms": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "algorithm": null,
+                "reason": "type_changed",
+                "pinned": null,
+                "seen": null
+              }
+            ],
+            "pinsAfter": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "test",
+                "keys": {
+                  "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "verified",
+                "firstSeenAt": 1794201002,
+                "verifiedAt": 1794201002,
+                "verification": {
+                  "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+                  "timestamp": 1794201000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "configured_pin_counts_as_verified",
+      "description": "A pin given in configuration counts as verified, whether the answer is signed or not: unchanged, and never written to the store.",
+      "initialPins": [],
+      "configuredPins": [
+        {
+          "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+          "type": "main",
+          "keys": {
+            "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+            "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+          }
+        }
+      ],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {},
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY2MU15TXdBcVJiY0Z0WGdTNXNZSkFCcXFHOVlMbUM0UTFSZGFwOWdTRThOcXR3eWJHaGVQWTJnWjI5RVNGanFKb0N1MVJ1cGplOFl0R3FzZWZEMjY1VE1nN3VzVURGZHA2VzFFR01jZXQ4In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjYxTXlNd0FxUmJjRjdoOUpYeDZWWDNkOG1YNEM4UUg2Y2VmakFZR0NSU0hNWXdhOVlnRmVvYmdmWjkzZTRkQ3JzUVR4VTJkQW40S0JQeGFOalJ2VDRVc3dTbVNrV3BCUDlnbjZMU3pSR0gifV19XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "absent",
+            "outcomes": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "outcome": "unchanged"
+              }
+            ],
+            "pinsAfter": []
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "x-api-response-sign": "kGQ9rw3ouP+5jjAyOzNLOTvtVzcUU9ysm0XRbKCm3PLKEfeUaFYO1kge3CKZRxTMCvsBF12vZq4fks9MBTsnBw==",
+              "x-api-response-timestamp": "1794201000",
+              "x-api-response-sign-version": "1",
+              "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+            },
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMiIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY2MU15TXdBcVJiY0Z0WGdTNXNZSkFCcXFHOVlMbUM0UTFSZGFwOWdTRThOcXR3eWJHaGVQWTJnWjI5RVNGanFKb0N1MVJ1cGplOFl0R3FzZWZEMjY1VE1nN3VzVURGZHA2VzFFR01jZXQ4In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjYxTXlNd0FxUmJjRjdoOUpYeDZWWDNkOG1YNEM4UUg2Y2VmakFZR0NSU0hNWXdhOVlnRmVvYmdmWjkzZTRkQ3JzUVR4VTJkQW40S0JQeGFOalJ2VDRVc3dTbVNrV3BCUDlnbjZMU3pSR0gifV19XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "verified",
+            "outcomes": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "outcome": "unchanged"
+              }
+            ],
+            "pinsAfter": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "configured_pin_changed_signed",
+      "description": "A signed answer with another xpub than the configured pin: the alarm, exactly as for a stored pin.",
+      "initialPins": [],
+      "configuredPins": [
+        {
+          "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+          "type": "main",
+          "keys": {
+            "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+            "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+          }
+        }
+      ],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "x-api-response-sign": "Sx+kK2rk+EeabQYXZMRQTX+FABWS7omKplE9dDThkguCyHC+vRjlKwvb1XGe0hUs9+ILWF/vBHQho8ADMmGBCg==",
+              "x-api-response-timestamp": "1794201000",
+              "x-api-response-sign-version": "1",
+              "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+            },
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY4R215NUVkdmdpYlFWZlBkcWtCQkNIeEE1aHRpcWc1NWNyWFl1WG9RUktmREJGQTFXRWpXZ1A2TEhod0JaZU5LMVZUc2ZURlVIQ2RyZnAxYmd3UTl4djVza2k4UFg5ckwyZFpYdmdHRG53In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjYxTXlNd0FxUmJjRjdoOUpYeDZWWDNkOG1YNEM4UUg2Y2VmakFZR0NSU0hNWXdhOVlnRmVvYmdmWjkzZTRkQ3JzUVR4VTJkQW40S0JQeGFOalJ2VDRVc3dTbVNrV3BCUDlnbjZMU3pSR0gifV19XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "verified",
+            "alarms": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "algorithm": "ECDSA",
+                "reason": "xpub_changed",
+                "pinned": "ec71164a05b609c1",
+                "seen": "1f1bfecfabc41a02"
+              }
+            ],
+            "pinsAfter": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "configured_pin_changed_unsigned",
+      "description": "An unsigned answer with another xpub than the configured pin: the alarm as well.",
+      "initialPins": [],
+      "configuredPins": [
+        {
+          "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+          "type": "main",
+          "keys": {
+            "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+            "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+          }
+        }
+      ],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {},
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY2MU15TXdBcVJiY0Z0WGdTNXNZSkFCcXFHOVlMbUM0UTFSZGFwOWdTRThOcXR3eWJHaGVQWTJnWjI5RVNGanFKb0N1MVJ1cGplOFl0R3FzZWZEMjY1VE1nN3VzVURGZHA2VzFFR01jZXQ4In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjlSazMxbXdiUTE3eFlzblVkeWd3VXBvalZFc2FEeGk3UlBRV1pjZ2liNk5UTlRaU1RRSENzTWFicDVLUVFaWjJrUDJrcFZFdDZEUE1KMkxMVEJKYlNDdVF2OURaOGJKajRxU3ZTY2ZmUUYifV19XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "absent",
+            "alarms": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "algorithm": "EDDSA",
+                "reason": "xpub_changed",
+                "pinned": "7750deb1dd993397",
+                "seen": "44d87c82577451c0"
+              }
+            ],
+            "pinsAfter": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "configured_pin_gains_algorithm",
+      "description": "A configured vault that gains an algorithm: refused (xpub_added), as for a stored pin.",
+      "initialPins": [],
+      "configuredPins": [
+        {
+          "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+          "type": "main",
+          "keys": {
+            "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+            "EDDSA": null
+          }
+        }
+      ],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "x-api-response-sign": "kBLKuwvnyUHG+/j2ci8Y2SFBe5ZwuuBrwULFN/+IfiS5zj5D9nmkq1/UfGUsbUpAIgrZvzjkvgGyvvG8O6MBBQ==",
+              "x-api-response-timestamp": "1794201000",
+              "x-api-response-sign-version": "1",
+              "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+            },
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY2MU15TXdBcVJiY0Z0WGdTNXNZSkFCcXFHOVlMbUM0UTFSZGFwOWdTRThOcXR3eWJHaGVQWTJnWjI5RVNGanFKb0N1MVJ1cGplOFl0R3FzZWZEMjY1VE1nN3VzVURGZHA2VzFFR01jZXQ4In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjYxTXlNd0FxUmJjRjdoOUpYeDZWWDNkOG1YNEM4UUg2Y2VmakFZR0NSU0hNWXdhOVlnRmVvYmdmWjkzZTRkQ3JzUVR4VTJkQW40S0JQeGFOalJ2VDRVc3dTbVNrV3BCUDlnbjZMU3pSR0gifV19XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "verified",
+            "alarms": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "algorithm": "EDDSA",
+                "reason": "xpub_added",
+                "pinned": null,
+                "seen": "7750deb1dd993397"
+              }
+            ],
+            "pinsAfter": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "configured_pin_replaces_stored_pin",
+      "description": "The configured pin takes the place of the stored pin of the same vault: the answer is compared with the configured xpubs only, and the stored pin is neither read nor changed.",
+      "initialPins": [
+        {
+          "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+          "type": "main",
+          "keys": {
+            "ECDSA": "xpub68Gmy5EdvgibQVfPdqkBBCHxA5htiqg55crXYuXoQRKfDBFA1WEjWgP6LHhwBZeNK1VTsfTFUHCdrfp1bgwQ9xv5ski8PX9rL2dZXvgGDnw",
+            "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+          },
+          "status": "unverified",
+          "firstSeenAt": 1794201002,
+          "verifiedAt": null,
+          "verification": null
+        }
+      ],
+      "configuredPins": [
+        {
+          "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+          "type": "main",
+          "keys": {
+            "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+            "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+          }
+        }
+      ],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "x-api-response-sign": "kBLKuwvnyUHG+/j2ci8Y2SFBe5ZwuuBrwULFN/+IfiS5zj5D9nmkq1/UfGUsbUpAIgrZvzjkvgGyvvG8O6MBBQ==",
+              "x-api-response-timestamp": "1794201000",
+              "x-api-response-sign-version": "1",
+              "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+            },
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY2MU15TXdBcVJiY0Z0WGdTNXNZSkFCcXFHOVlMbUM0UTFSZGFwOWdTRThOcXR3eWJHaGVQWTJnWjI5RVNGanFKb0N1MVJ1cGplOFl0R3FzZWZEMjY1VE1nN3VzVURGZHA2VzFFR01jZXQ4In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjYxTXlNd0FxUmJjRjdoOUpYeDZWWDNkOG1YNEM4UUg2Y2VmakFZR0NSU0hNWXdhOVlnRmVvYmdmWjkzZTRkQ3JzUVR4VTJkQW40S0JQeGFOalJ2VDRVc3dTbVNrV3BCUDlnbjZMU3pSR0gifV19XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "verified",
+            "outcomes": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "outcome": "unchanged"
+              }
+            ],
+            "pinsAfter": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub68Gmy5EdvgibQVfPdqkBBCHxA5htiqg55crXYuXoQRKfDBFA1WEjWgP6LHhwBZeNK1VTsfTFUHCdrfp1bgwQ9xv5ski8PX9rL2dZXvgGDnw",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "unverified",
+                "firstSeenAt": 1794201002,
+                "verifiedAt": null,
+                "verification": null
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {},
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMiIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY4R215NUVkdmdpYlFWZlBkcWtCQkNIeEE1aHRpcWc1NWNyWFl1WG9RUktmREJGQTFXRWpXZ1A2TEhod0JaZU5LMVZUc2ZURlVIQ2RyZnAxYmd3UTl4djVza2k4UFg5ckwyZFpYdmdHRG53In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjYxTXlNd0FxUmJjRjdoOUpYeDZWWDNkOG1YNEM4UUg2Y2VmakFZR0NSU0hNWXdhOVlnRmVvYmdmWjkzZTRkQ3JzUVR4VTJkQW40S0JQeGFOalJ2VDRVc3dTbVNrV3BCUDlnbjZMU3pSR0gifV19XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "absent",
+            "alarms": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "algorithm": "ECDSA",
+                "reason": "xpub_changed",
+                "pinned": "ec71164a05b609c1",
+                "seen": "1f1bfecfabc41a02"
+              }
+            ],
+            "pinsAfter": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub68Gmy5EdvgibQVfPdqkBBCHxA5htiqg55crXYuXoQRKfDBFA1WEjWgP6LHhwBZeNK1VTsfTFUHCdrfp1bgwQ9xv5ski8PX9rL2dZXvgGDnw",
+                  "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+                },
+                "status": "unverified",
+                "firstSeenAt": 1794201002,
+                "verifiedAt": null,
+                "verification": null
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "configured_and_stored_pins_together",
+      "description": "Vaults not in the configuration are pinned in the store as usual, next to the configured ones.",
+      "initialPins": [],
+      "configuredPins": [
+        {
+          "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+          "type": "main",
+          "keys": {
+            "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+            "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+          }
+        }
+      ],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "x-api-response-sign": "2neoB/61cy6s8bmiPHfIihDuiA+VMC56tFPEmi27NeguILYYK9Yy4tLQFdhTBLy3LF6SNqbFkXZT7DIsfLZaAg==",
+              "x-api-response-timestamp": "1794201000",
+              "x-api-response-sign-version": "1",
+              "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+            },
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY2MU15TXdBcVJiY0Z0WGdTNXNZSkFCcXFHOVlMbUM0UTFSZGFwOWdTRThOcXR3eWJHaGVQWTJnWjI5RVNGanFKb0N1MVJ1cGplOFl0R3FzZWZEMjY1VE1nN3VzVURGZHA2VzFFR01jZXQ4In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjYxTXlNd0FxUmJjRjdoOUpYeDZWWDNkOG1YNEM4UUg2Y2VmakFZR0NSU0hNWXdhOVlnRmVvYmdmWjkzZTRkQ3JzUVR4VTJkQW40S0JQeGFOalJ2VDRVc3dTbVNrV3BCUDlnbjZMU3pSR0gifV19LHsiYmFja3VwZWQiOnRydWUsImNoYW5nZUFkZHJlc3Nlc0NvdW50IjowLCJjb2xvciI6IiMyNjg0RkYiLCJjcmVhdGVkVGltZXN0YW1wIjoxNzI1NDU4MTA5LCJkZXBvc2l0QWRkcmVzc2VzQ291bnQiOjMsImlkIjoiNjYzMGYxYzJhOWU0YjVkN2M4ZTlmMGMzIiwibmFtZSI6IlZhdWx0IGMzIiwidHlwZSI6Im1haW4iLCJtcGNLZXlzIjpbeyJhbGdvcml0aG0iOiJFQ0RTQSIsInhwdWIiOiJ4cHViNjhHbXk1RWR2Z2liUVZmUGRxa0JCQ0h4QTVodGlxZzU1Y3JYWXVYb1FSS2ZEQkZBMVdFaldnUDZMSGh3QlplTksxVlRzZlRGVUhDZHJmcDFiZ3dROXh2NXNraThQWDlyTDJkWlh2Z0dEbncifV19XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "verified",
+            "outcomes": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "outcome": "unchanged"
+              },
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0c3",
+                "outcome": "pinned"
+              }
+            ],
+            "pinsAfter": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0c3",
+                "type": "main",
+                "keys": {
+                  "ECDSA": "xpub68Gmy5EdvgibQVfPdqkBBCHxA5htiqg55crXYuXoQRKfDBFA1WEjWgP6LHhwBZeNK1VTsfTFUHCdrfp1bgwQ9xv5ski8PX9rL2dZXvgGDnw",
+                  "EDDSA": null
+                },
+                "status": "verified",
+                "firstSeenAt": 1794201002,
+                "verifiedAt": 1794201002,
+                "verification": {
+                  "rootId": "b8db84bfef783441332173f1c099c89df45f4ef86258d1b582f43c501d62a9df",
+                  "timestamp": 1794201000
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "configured_pin_alarm_refuses_whole_answer",
+      "description": "A configured vault alarms and another is new: the whole answer is refused, so the new vault is not pinned either.",
+      "initialPins": [],
+      "configuredPins": [
+        {
+          "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+          "type": "main",
+          "keys": {
+            "ECDSA": "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8",
+            "EDDSA": "xpub661MyMwAqRbcF7h9JXx6VX3d8mX4C8QH6cefjAYGCRSHMYwa9YgFeobgfZ93e4dCrsQTxU2dAn4KBPxaNjRvT4UswSmSkWpBP9gn6LSzRGH"
+          }
+        }
+      ],
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/vaults/main",
+            "query": "limit=50",
+            "bodyBase64": "",
+            "apiSign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+            "keypairSign": ""
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "x-api-response-sign": "EPFPSbc8/0A3Dx0arb1/riEtZc6Xw/7E9g1me49R8dRgZRYT+l696RqPRtbIU7Ekz6puwZTCZJivvCgEL7H5Bg==",
+              "x-api-response-timestamp": "1794201000",
+              "x-api-response-sign-version": "1",
+              "x-api-response-cert": "dmF1bHRvZHktcmVzcG9uc2Uta2V5LXYxCmI4ZGI4NGJmZWY3ODM0NDEzMzIxNzNmMWMwOTljODlkZjQ1ZjRlZjg2MjU4ZDFiNTgyZjQzYzUwMWQ2MmE5ZGYKdU4xa2p0UGZISllYQWlCakNsdDdHWi9nUmw3QnovYmJoZ0pPcjdYYkpIbz0KYjM3MThhNTdmYjhkZGIwMmI1MWUwYzMyZWFkNzZkMzcKMTc5NDIwMDAwMAoxNzk0MjAzNjAw.MEQCIBvhBg28aWLkcAj6FCvWvfhhmt0lt6KHOpAxQKi6CElPAiAcPFK/zJFSetHbk4rSb0OLFyTtsWWeleYtm8TpfWIG8g=="
+            },
+            "bodyBase64": "eyJhcGlWZXJzaW9uIjoiMjAyNi0wMy0yMCIsInJlcXVlc3RJZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjAwMSIsImRhdGEiOnsibGltaXQiOjUwLCJoYXNNb3JlIjpmYWxzZSwiaXRlbXMiOlt7ImJhY2t1cGVkIjp0cnVlLCJjaGFuZ2VBZGRyZXNzZXNDb3VudCI6MCwiY29sb3IiOiIjMjY4NEZGIiwiY3JlYXRlZFRpbWVzdGFtcCI6MTcyNTQ1ODEwOSwiZGVwb3NpdEFkZHJlc3Nlc0NvdW50IjozLCJpZCI6IjY2MzBmMWMyYTllNGI1ZDdjOGU5ZjBhMSIsIm5hbWUiOiJWYXVsdCBhMSIsInR5cGUiOiJtYWluIiwibXBjS2V5cyI6W3siYWxnb3JpdGhtIjoiRUNEU0EiLCJ4cHViIjoieHB1YjY4R215NUVkdmdpYlFWZlBkcWtCQkNIeEE1aHRpcWc1NWNyWFl1WG9RUktmREJGQTFXRWpXZ1A2TEhod0JaZU5LMVZUc2ZURlVIQ2RyZnAxYmd3UTl4djVza2k4UFg5ckwyZFpYdmdHRG53In0seyJhbGdvcml0aG0iOiJFRERTQSIsInhwdWIiOiJ4cHViNjYxTXlNd0FxUmJjRjdoOUpYeDZWWDNkOG1YNEM4UUg2Y2VmakFZR0NSU0hNWXdhOVlnRmVvYmdmWjkzZTRkQ3JzUVR4VTJkQW40S0JQeGFOalJ2VDRVc3dTbVNrV3BCUDlnbjZMU3pSR0gifV19LHsiYmFja3VwZWQiOnRydWUsImNoYW5nZUFkZHJlc3Nlc0NvdW50IjowLCJjb2xvciI6IiMyNjg0RkYiLCJjcmVhdGVkVGltZXN0YW1wIjoxNzI1NDU4MTA5LCJkZXBvc2l0QWRkcmVzc2VzQ291bnQiOjMsImlkIjoiNjYzMGYxYzJhOWU0YjVkN2M4ZTlmMGMzIiwibmFtZSI6IlZhdWx0IGMzIiwidHlwZSI6Im1haW4iLCJtcGNLZXlzIjpbeyJhbGdvcml0aG0iOiJFQ0RTQSIsInhwdWIiOiJ4cHViNjhHbXk1RWR2Z2liUVZmUGRxa0JCQ0h4QTVodGlxZzU1Y3JYWXVYb1FSS2ZEQkZBMVdFaldnUDZMSGh3QlplTksxVlRzZlRGVUhDZHJmcDFiZ3dROXh2NXNraThQWDlyTDJkWlh2Z0dEbncifV19XX19"
+          },
+          "now": 1794201002,
+          "expected": {
+            "signature": "verified",
+            "alarms": [
+              {
+                "vaultId": "6630f1c2a9e4b5d7c8e9f0a1",
+                "algorithm": "ECDSA",
+                "reason": "xpub_changed",
+                "pinned": "ec71164a05b609c1",
+                "seen": "1f1bfecfabc41a02"
+              }
+            ],
+            "pinsAfter": []
+          }
+        }
+      ]
+    }
+  ],
+  "addressChecks": [
+    {
+      "name": "verified_pin_match",
+      "description": "The address derives from a verified pin.",
+      "pin": "verified",
+      "vaultHasKeys": true,
+      "pathFields": true,
+      "derivation": "match",
+      "expected": {
+        "status": "verified"
+      }
+    },
+    {
+      "name": "unverified_pin_match",
+      "description": "The address derives from an unverified (trust on first use) pin: reported as unverified, never verified.",
+      "pin": "unverified",
+      "vaultHasKeys": true,
+      "pathFields": true,
+      "derivation": "match",
+      "expected": {
+        "status": "unverified"
+      }
+    },
+    {
+      "name": "smart_vault",
+      "description": "A vault without MPC keys: not verifiable.",
+      "pin": null,
+      "vaultHasKeys": false,
+      "pathFields": false,
+      "derivation": null,
+      "expected": {
+        "status": "not_verifiable"
+      }
+    },
+    {
+      "name": "no_path_fields",
+      "description": "An address without accountIndex, isChange and addressIndex (an old row): not verifiable.",
+      "pin": "verified",
+      "vaultHasKeys": true,
+      "pathFields": false,
+      "derivation": null,
+      "expected": {
+        "status": "not_verifiable"
+      }
+    },
+    {
+      "name": "mismatch_verified",
+      "description": "The address does not derive from the verified pin: refused.",
+      "pin": "verified",
+      "vaultHasKeys": true,
+      "pathFields": true,
+      "derivation": "mismatch",
+      "expected": {
+        "error": "mismatch"
+      }
+    },
+    {
+      "name": "mismatch_unverified",
+      "description": "Not deriving from an unverified pin is refused just the same.",
+      "pin": "unverified",
+      "vaultHasKeys": true,
+      "pathFields": true,
+      "derivation": "mismatch",
+      "expected": {
+        "error": "mismatch"
+      }
+    },
+    {
+      "name": "configured_pin_match",
+      "description": "The address derives from a pin given in configuration: verified.",
+      "pin": "configured",
+      "vaultHasKeys": true,
+      "pathFields": true,
+      "derivation": "match",
+      "expected": {
+        "status": "verified"
+      }
+    },
+    {
+      "name": "configured_pin_mismatch",
+      "description": "Not deriving from a configured pin is refused.",
+      "pin": "configured",
+      "vaultHasKeys": true,
+      "pathFields": true,
+      "derivation": "mismatch",
+      "expected": {
+        "error": "mismatch"
+      }
+    },
+    {
+      "name": "generate_no_path_required",
+      "description": "requireAddressPaths on: generateDepositAddress answers an address without its path for a vault with MPC keys, on a chain the SDK can derive: refused.",
+      "pin": "verified",
+      "vaultHasKeys": true,
+      "pathFields": false,
+      "derivation": null,
+      "pathRequired": {
+        "requireAddressPaths": true,
+        "operationId": "generateDepositAddress",
+        "chainKnown": true
+      },
+      "expected": {
+        "error": "path_missing"
+      }
+    },
+    {
+      "name": "generate_no_path_unverified_pin",
+      "description": "The same with an unverified pin: refused just the same.",
+      "pin": "unverified",
+      "vaultHasKeys": true,
+      "pathFields": false,
+      "derivation": null,
+      "pathRequired": {
+        "requireAddressPaths": true,
+        "operationId": "generateDepositAddress",
+        "chainKnown": true
+      },
+      "expected": {
+        "error": "path_missing"
+      }
+    },
+    {
+      "name": "generate_no_path_smart_vault",
+      "description": "requireAddressPaths on, a vault without MPC keys (SMART): nothing to derive, not verifiable.",
+      "pin": null,
+      "vaultHasKeys": false,
+      "pathFields": false,
+      "derivation": null,
+      "pathRequired": {
+        "requireAddressPaths": true,
+        "operationId": "generateDepositAddress",
+        "chainKnown": true
+      },
+      "expected": {
+        "status": "not_verifiable"
+      }
+    },
+    {
+      "name": "generate_no_path_unknown_chain",
+      "description": "requireAddressPaths on, a chain the SDK can't derive: not verifiable.",
+      "pin": "verified",
+      "vaultHasKeys": true,
+      "pathFields": false,
+      "derivation": null,
+      "pathRequired": {
+        "requireAddressPaths": true,
+        "operationId": "generateDepositAddress",
+        "chainKnown": false
+      },
+      "expected": {
+        "status": "not_verifiable"
+      }
+    },
+    {
+      "name": "list_no_path_required",
+      "description": "requireAddressPaths on, an address list: its older rows may have no path, so not verifiable.",
+      "pin": "verified",
+      "vaultHasKeys": true,
+      "pathFields": false,
+      "derivation": null,
+      "pathRequired": {
+        "requireAddressPaths": true,
+        "operationId": "listAddressesByVaultAccountId",
+        "chainKnown": true
+      },
+      "expected": {
+        "status": "not_verifiable"
+      }
+    },
+    {
+      "name": "add_asset_no_path_required",
+      "description": "requireAddressPaths on, addAssetToVaultAccount: it may answer an older address, so not verifiable.",
+      "pin": "verified",
+      "vaultHasKeys": true,
+      "pathFields": false,
+      "derivation": null,
+      "pathRequired": {
+        "requireAddressPaths": true,
+        "operationId": "addAssetToVaultAccount",
+        "chainKnown": true
+      },
+      "expected": {
+        "status": "not_verifiable"
+      }
+    },
+    {
+      "name": "generate_no_path_not_required",
+      "description": "requireAddressPaths off (the default while the paths are hidden): not verifiable.",
+      "pin": "verified",
+      "vaultHasKeys": true,
+      "pathFields": false,
+      "derivation": null,
+      "pathRequired": {
+        "requireAddressPaths": false,
+        "operationId": "generateDepositAddress",
+        "chainKnown": true
+      },
+      "expected": {
+        "status": "not_verifiable"
+      }
+    },
+    {
+      "name": "generate_with_path_required",
+      "description": "requireAddressPaths on and the path given: checked as always.",
+      "pin": "verified",
+      "vaultHasKeys": true,
+      "pathFields": true,
+      "derivation": "match",
+      "pathRequired": {
+        "requireAddressPaths": true,
+        "operationId": "generateDepositAddress",
+        "chainKnown": true
+      },
+      "expected": {
+        "status": "verified"
+      }
+    }
+  ]
+}

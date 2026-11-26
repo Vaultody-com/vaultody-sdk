@@ -1,0 +1,1039 @@
+{
+  "format": "vaultody pagination, v1",
+  "source": {
+    "generator": "test-vectors/tools/generate-sdk-vectors.js",
+    "overlay": "contract/overlay.json (cursorField per operation)"
+  },
+  "rules": {
+    "first": "The first request has no startingAfter (offset paging: offset 0) and the limit given, or the operation's maximum (50; listApiKeySigningKeys 2) when none is.",
+    "cursor": "After a page: stop with \"end\" when hasMore is false; stop with \"empty_page\" when it has no items; else the next startingAfter is the value of the operation's cursor field on the last item (missing or not a non-empty string: error missing_cursor). A cursor used before: error pagination_loop.",
+    "offset": "After a page: the next offset is offset + the number of items; stop with \"end\" when that reaches total, else with \"empty_page\" when the page had no items.",
+    "maxItems": "With maxItems, stop with \"max_items\" as soon as that many items were yielded, without fetching further.",
+    "pages": "Each page is fetched like any other call: signed, verified, checked."
+  },
+  "caseFormat": {
+    "maxLimit": "the operation's largest page, the limit used when none is given",
+    "pages": "in order, the request the SDK must make (startingAfter and limit, or offset and limit) and the data the answer holds",
+    "expected": "items: the cursor field (offset paging: itemField) of every item yielded, in order, null where it is missing; stop: why it ended, or error"
+  },
+  "cases": [
+    {
+      "name": "listAddressesByVaultAccountId_three_pages",
+      "description": "listAddressesByVaultAccountId: the cursor is the addressId of the last item.",
+      "operationId": "listAddressesByVaultAccountId",
+      "paging": "cursor",
+      "cursorField": "addressId",
+      "limit": 2,
+      "pages": [
+        {
+          "request": {
+            "startingAfter": null,
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": true,
+            "items": [
+              {
+                "addressId": "6630f1c2a9e4b5d7c8e90001",
+                "extra": "item 1"
+              },
+              {
+                "addressId": "6630f1c2a9e4b5d7c8e90002",
+                "extra": "item 2"
+              }
+            ],
+            "startingAfter": "6630f1c2a9e4b5d7c8e90002"
+          }
+        },
+        {
+          "request": {
+            "startingAfter": "6630f1c2a9e4b5d7c8e90002",
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": true,
+            "items": [
+              {
+                "addressId": "6630f1c2a9e4b5d7c8e90003",
+                "extra": "item 3"
+              },
+              {
+                "addressId": "6630f1c2a9e4b5d7c8e90004",
+                "extra": "item 4"
+              }
+            ],
+            "startingAfter": "6630f1c2a9e4b5d7c8e90004"
+          }
+        },
+        {
+          "request": {
+            "startingAfter": "6630f1c2a9e4b5d7c8e90004",
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": false,
+            "items": [
+              {
+                "addressId": "6630f1c2a9e4b5d7c8e90005",
+                "extra": "item 5"
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "items": [
+          "6630f1c2a9e4b5d7c8e90001",
+          "6630f1c2a9e4b5d7c8e90002",
+          "6630f1c2a9e4b5d7c8e90003",
+          "6630f1c2a9e4b5d7c8e90004",
+          "6630f1c2a9e4b5d7c8e90005"
+        ],
+        "stop": "end"
+      },
+      "maxLimit": 50
+    },
+    {
+      "name": "listAssetsByVaultAccountId_three_pages",
+      "description": "listAssetsByVaultAccountId: the cursor is the assetId of the last item.",
+      "operationId": "listAssetsByVaultAccountId",
+      "paging": "cursor",
+      "cursorField": "assetId",
+      "limit": 2,
+      "pages": [
+        {
+          "request": {
+            "startingAfter": null,
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": true,
+            "items": [
+              {
+                "assetId": "6630f1c2a9e4b5d7c8e90001",
+                "extra": "item 1"
+              },
+              {
+                "assetId": "6630f1c2a9e4b5d7c8e90002",
+                "extra": "item 2"
+              }
+            ],
+            "startingAfter": "6630f1c2a9e4b5d7c8e90002"
+          }
+        },
+        {
+          "request": {
+            "startingAfter": "6630f1c2a9e4b5d7c8e90002",
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": true,
+            "items": [
+              {
+                "assetId": "6630f1c2a9e4b5d7c8e90003",
+                "extra": "item 3"
+              },
+              {
+                "assetId": "6630f1c2a9e4b5d7c8e90004",
+                "extra": "item 4"
+              }
+            ],
+            "startingAfter": "6630f1c2a9e4b5d7c8e90004"
+          }
+        },
+        {
+          "request": {
+            "startingAfter": "6630f1c2a9e4b5d7c8e90004",
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": false,
+            "items": [
+              {
+                "assetId": "6630f1c2a9e4b5d7c8e90005",
+                "extra": "item 5"
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "items": [
+          "6630f1c2a9e4b5d7c8e90001",
+          "6630f1c2a9e4b5d7c8e90002",
+          "6630f1c2a9e4b5d7c8e90003",
+          "6630f1c2a9e4b5d7c8e90004",
+          "6630f1c2a9e4b5d7c8e90005"
+        ],
+        "stop": "end"
+      },
+      "maxLimit": 50
+    },
+    {
+      "name": "listSupportedAssets_three_pages",
+      "description": "listSupportedAssets: the cursor is the assetId of the last item.",
+      "operationId": "listSupportedAssets",
+      "paging": "cursor",
+      "cursorField": "assetId",
+      "limit": 2,
+      "pages": [
+        {
+          "request": {
+            "startingAfter": null,
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": true,
+            "items": [
+              {
+                "assetId": "6630f1c2a9e4b5d7c8e90001",
+                "extra": "item 1"
+              },
+              {
+                "assetId": "6630f1c2a9e4b5d7c8e90002",
+                "extra": "item 2"
+              }
+            ],
+            "startingAfter": "6630f1c2a9e4b5d7c8e90002"
+          }
+        },
+        {
+          "request": {
+            "startingAfter": "6630f1c2a9e4b5d7c8e90002",
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": true,
+            "items": [
+              {
+                "assetId": "6630f1c2a9e4b5d7c8e90003",
+                "extra": "item 3"
+              },
+              {
+                "assetId": "6630f1c2a9e4b5d7c8e90004",
+                "extra": "item 4"
+              }
+            ],
+            "startingAfter": "6630f1c2a9e4b5d7c8e90004"
+          }
+        },
+        {
+          "request": {
+            "startingAfter": "6630f1c2a9e4b5d7c8e90004",
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": false,
+            "items": [
+              {
+                "assetId": "6630f1c2a9e4b5d7c8e90005",
+                "extra": "item 5"
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "items": [
+          "6630f1c2a9e4b5d7c8e90001",
+          "6630f1c2a9e4b5d7c8e90002",
+          "6630f1c2a9e4b5d7c8e90003",
+          "6630f1c2a9e4b5d7c8e90004",
+          "6630f1c2a9e4b5d7c8e90005"
+        ],
+        "stop": "end"
+      },
+      "maxLimit": 50
+    },
+    {
+      "name": "listTransactionsByVault_three_pages",
+      "description": "listTransactionsByVault: the cursor is the id of the last item.",
+      "operationId": "listTransactionsByVault",
+      "paging": "cursor",
+      "cursorField": "id",
+      "limit": 2,
+      "pages": [
+        {
+          "request": {
+            "startingAfter": null,
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": true,
+            "items": [
+              {
+                "id": "6630f1c2a9e4b5d7c8e90001",
+                "extra": "item 1"
+              },
+              {
+                "id": "6630f1c2a9e4b5d7c8e90002",
+                "extra": "item 2"
+              }
+            ],
+            "startingAfter": "6630f1c2a9e4b5d7c8e90002"
+          }
+        },
+        {
+          "request": {
+            "startingAfter": "6630f1c2a9e4b5d7c8e90002",
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": true,
+            "items": [
+              {
+                "id": "6630f1c2a9e4b5d7c8e90003",
+                "extra": "item 3"
+              },
+              {
+                "id": "6630f1c2a9e4b5d7c8e90004",
+                "extra": "item 4"
+              }
+            ],
+            "startingAfter": "6630f1c2a9e4b5d7c8e90004"
+          }
+        },
+        {
+          "request": {
+            "startingAfter": "6630f1c2a9e4b5d7c8e90004",
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": false,
+            "items": [
+              {
+                "id": "6630f1c2a9e4b5d7c8e90005",
+                "extra": "item 5"
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "items": [
+          "6630f1c2a9e4b5d7c8e90001",
+          "6630f1c2a9e4b5d7c8e90002",
+          "6630f1c2a9e4b5d7c8e90003",
+          "6630f1c2a9e4b5d7c8e90004",
+          "6630f1c2a9e4b5d7c8e90005"
+        ],
+        "stop": "end"
+      },
+      "maxLimit": 50
+    },
+    {
+      "name": "listTransactionsByVaultAccount_three_pages",
+      "description": "listTransactionsByVaultAccount: the cursor is the id of the last item.",
+      "operationId": "listTransactionsByVaultAccount",
+      "paging": "cursor",
+      "cursorField": "id",
+      "limit": 2,
+      "pages": [
+        {
+          "request": {
+            "startingAfter": null,
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": true,
+            "items": [
+              {
+                "id": "6630f1c2a9e4b5d7c8e90001",
+                "extra": "item 1"
+              },
+              {
+                "id": "6630f1c2a9e4b5d7c8e90002",
+                "extra": "item 2"
+              }
+            ],
+            "startingAfter": "6630f1c2a9e4b5d7c8e90002"
+          }
+        },
+        {
+          "request": {
+            "startingAfter": "6630f1c2a9e4b5d7c8e90002",
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": true,
+            "items": [
+              {
+                "id": "6630f1c2a9e4b5d7c8e90003",
+                "extra": "item 3"
+              },
+              {
+                "id": "6630f1c2a9e4b5d7c8e90004",
+                "extra": "item 4"
+              }
+            ],
+            "startingAfter": "6630f1c2a9e4b5d7c8e90004"
+          }
+        },
+        {
+          "request": {
+            "startingAfter": "6630f1c2a9e4b5d7c8e90004",
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": false,
+            "items": [
+              {
+                "id": "6630f1c2a9e4b5d7c8e90005",
+                "extra": "item 5"
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "items": [
+          "6630f1c2a9e4b5d7c8e90001",
+          "6630f1c2a9e4b5d7c8e90002",
+          "6630f1c2a9e4b5d7c8e90003",
+          "6630f1c2a9e4b5d7c8e90004",
+          "6630f1c2a9e4b5d7c8e90005"
+        ],
+        "stop": "end"
+      },
+      "maxLimit": 50
+    },
+    {
+      "name": "listUtxos_three_pages",
+      "description": "listUtxos: the cursor is the utxoId of the last item.",
+      "operationId": "listUtxos",
+      "paging": "cursor",
+      "cursorField": "utxoId",
+      "limit": 2,
+      "pages": [
+        {
+          "request": {
+            "startingAfter": null,
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": true,
+            "items": [
+              {
+                "utxoId": "6630f1c2a9e4b5d7c8e90001",
+                "extra": "item 1"
+              },
+              {
+                "utxoId": "6630f1c2a9e4b5d7c8e90002",
+                "extra": "item 2"
+              }
+            ],
+            "startingAfter": "6630f1c2a9e4b5d7c8e90002"
+          }
+        },
+        {
+          "request": {
+            "startingAfter": "6630f1c2a9e4b5d7c8e90002",
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": true,
+            "items": [
+              {
+                "utxoId": "6630f1c2a9e4b5d7c8e90003",
+                "extra": "item 3"
+              },
+              {
+                "utxoId": "6630f1c2a9e4b5d7c8e90004",
+                "extra": "item 4"
+              }
+            ],
+            "startingAfter": "6630f1c2a9e4b5d7c8e90004"
+          }
+        },
+        {
+          "request": {
+            "startingAfter": "6630f1c2a9e4b5d7c8e90004",
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": false,
+            "items": [
+              {
+                "utxoId": "6630f1c2a9e4b5d7c8e90005",
+                "extra": "item 5"
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "items": [
+          "6630f1c2a9e4b5d7c8e90001",
+          "6630f1c2a9e4b5d7c8e90002",
+          "6630f1c2a9e4b5d7c8e90003",
+          "6630f1c2a9e4b5d7c8e90004",
+          "6630f1c2a9e4b5d7c8e90005"
+        ],
+        "stop": "end"
+      },
+      "maxLimit": 50
+    },
+    {
+      "name": "listVaultAccounts_three_pages",
+      "description": "listVaultAccounts: the cursor is the vaultAccountId of the last item.",
+      "operationId": "listVaultAccounts",
+      "paging": "cursor",
+      "cursorField": "vaultAccountId",
+      "limit": 2,
+      "pages": [
+        {
+          "request": {
+            "startingAfter": null,
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": true,
+            "items": [
+              {
+                "vaultAccountId": "6630f1c2a9e4b5d7c8e90001",
+                "extra": "item 1"
+              },
+              {
+                "vaultAccountId": "6630f1c2a9e4b5d7c8e90002",
+                "extra": "item 2"
+              }
+            ],
+            "startingAfter": "6630f1c2a9e4b5d7c8e90002"
+          }
+        },
+        {
+          "request": {
+            "startingAfter": "6630f1c2a9e4b5d7c8e90002",
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": true,
+            "items": [
+              {
+                "vaultAccountId": "6630f1c2a9e4b5d7c8e90003",
+                "extra": "item 3"
+              },
+              {
+                "vaultAccountId": "6630f1c2a9e4b5d7c8e90004",
+                "extra": "item 4"
+              }
+            ],
+            "startingAfter": "6630f1c2a9e4b5d7c8e90004"
+          }
+        },
+        {
+          "request": {
+            "startingAfter": "6630f1c2a9e4b5d7c8e90004",
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": false,
+            "items": [
+              {
+                "vaultAccountId": "6630f1c2a9e4b5d7c8e90005",
+                "extra": "item 5"
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "items": [
+          "6630f1c2a9e4b5d7c8e90001",
+          "6630f1c2a9e4b5d7c8e90002",
+          "6630f1c2a9e4b5d7c8e90003",
+          "6630f1c2a9e4b5d7c8e90004",
+          "6630f1c2a9e4b5d7c8e90005"
+        ],
+        "stop": "end"
+      },
+      "maxLimit": 50
+    },
+    {
+      "name": "listVaults_three_pages",
+      "description": "listVaults: the cursor is the id of the last item.",
+      "operationId": "listVaults",
+      "paging": "cursor",
+      "cursorField": "id",
+      "limit": 2,
+      "pages": [
+        {
+          "request": {
+            "startingAfter": null,
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": true,
+            "items": [
+              {
+                "id": "6630f1c2a9e4b5d7c8e90001",
+                "extra": "item 1"
+              },
+              {
+                "id": "6630f1c2a9e4b5d7c8e90002",
+                "extra": "item 2"
+              }
+            ],
+            "startingAfter": "6630f1c2a9e4b5d7c8e90002"
+          }
+        },
+        {
+          "request": {
+            "startingAfter": "6630f1c2a9e4b5d7c8e90002",
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": true,
+            "items": [
+              {
+                "id": "6630f1c2a9e4b5d7c8e90003",
+                "extra": "item 3"
+              },
+              {
+                "id": "6630f1c2a9e4b5d7c8e90004",
+                "extra": "item 4"
+              }
+            ],
+            "startingAfter": "6630f1c2a9e4b5d7c8e90004"
+          }
+        },
+        {
+          "request": {
+            "startingAfter": "6630f1c2a9e4b5d7c8e90004",
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": false,
+            "items": [
+              {
+                "id": "6630f1c2a9e4b5d7c8e90005",
+                "extra": "item 5"
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "items": [
+          "6630f1c2a9e4b5d7c8e90001",
+          "6630f1c2a9e4b5d7c8e90002",
+          "6630f1c2a9e4b5d7c8e90003",
+          "6630f1c2a9e4b5d7c8e90004",
+          "6630f1c2a9e4b5d7c8e90005"
+        ],
+        "stop": "end"
+      },
+      "maxLimit": 50
+    },
+    {
+      "name": "default_limit",
+      "description": "No limit given: the operation's maximum, 50.",
+      "operationId": "listVaults",
+      "paging": "cursor",
+      "cursorField": "id",
+      "limit": null,
+      "pages": [
+        {
+          "request": {
+            "startingAfter": null,
+            "limit": 50
+          },
+          "response": {
+            "limit": 50,
+            "hasMore": false,
+            "items": [
+              {
+                "id": "6630f1c2a9e4b5d7c8e90001",
+                "extra": "item 1"
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "items": [
+          "6630f1c2a9e4b5d7c8e90001"
+        ],
+        "stop": "end"
+      },
+      "maxLimit": 50
+    },
+    {
+      "name": "empty_first_page",
+      "description": "Nothing at all.",
+      "operationId": "listVaults",
+      "paging": "cursor",
+      "cursorField": "id",
+      "limit": 2,
+      "pages": [
+        {
+          "request": {
+            "startingAfter": null,
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": false,
+            "items": []
+          }
+        }
+      ],
+      "expected": {
+        "items": [],
+        "stop": "end"
+      },
+      "maxLimit": 50
+    },
+    {
+      "name": "empty_page_with_has_more",
+      "description": "An empty page that says more follow: stop, there is no cursor to go on with.",
+      "operationId": "listVaults",
+      "paging": "cursor",
+      "cursorField": "id",
+      "limit": 2,
+      "pages": [
+        {
+          "request": {
+            "startingAfter": null,
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": true,
+            "items": [
+              {
+                "id": "6630f1c2a9e4b5d7c8e90001",
+                "extra": "item 1"
+              },
+              {
+                "id": "6630f1c2a9e4b5d7c8e90002",
+                "extra": "item 2"
+              }
+            ],
+            "startingAfter": "6630f1c2a9e4b5d7c8e90002"
+          }
+        },
+        {
+          "request": {
+            "startingAfter": "6630f1c2a9e4b5d7c8e90002",
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": true,
+            "items": []
+          }
+        }
+      ],
+      "expected": {
+        "items": [
+          "6630f1c2a9e4b5d7c8e90001",
+          "6630f1c2a9e4b5d7c8e90002"
+        ],
+        "stop": "empty_page"
+      },
+      "maxLimit": 50
+    },
+    {
+      "name": "same_cursor_twice",
+      "description": "A page whose last item is the cursor already used: a loop, refused.",
+      "operationId": "listVaults",
+      "paging": "cursor",
+      "cursorField": "id",
+      "limit": 2,
+      "pages": [
+        {
+          "request": {
+            "startingAfter": null,
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": true,
+            "items": [
+              {
+                "id": "6630f1c2a9e4b5d7c8e90001",
+                "extra": "item 1"
+              },
+              {
+                "id": "6630f1c2a9e4b5d7c8e90002",
+                "extra": "item 2"
+              }
+            ],
+            "startingAfter": "6630f1c2a9e4b5d7c8e90002"
+          }
+        },
+        {
+          "request": {
+            "startingAfter": "6630f1c2a9e4b5d7c8e90002",
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": true,
+            "startingAfter": "6630f1c2a9e4b5d7c8e90002",
+            "items": [
+              {
+                "id": "6630f1c2a9e4b5d7c8e90003"
+              },
+              {
+                "id": "6630f1c2a9e4b5d7c8e90002"
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "items": [
+          "6630f1c2a9e4b5d7c8e90001",
+          "6630f1c2a9e4b5d7c8e90002",
+          "6630f1c2a9e4b5d7c8e90003",
+          "6630f1c2a9e4b5d7c8e90002"
+        ],
+        "error": "pagination_loop"
+      },
+      "maxLimit": 50
+    },
+    {
+      "name": "cursor_field_missing",
+      "description": "The last item has no cursor field: refused rather than guessed.",
+      "operationId": "listVaults",
+      "paging": "cursor",
+      "cursorField": "id",
+      "limit": 2,
+      "pages": [
+        {
+          "request": {
+            "startingAfter": null,
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": true,
+            "items": [
+              {
+                "id": "6630f1c2a9e4b5d7c8e90001"
+              },
+              {
+                "name": "no id"
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "items": [
+          "6630f1c2a9e4b5d7c8e90001",
+          null
+        ],
+        "error": "missing_cursor"
+      },
+      "maxLimit": 50
+    },
+    {
+      "name": "max_items_mid_page",
+      "description": "maxItems 3: stop after the third item, without asking for the third page.",
+      "operationId": "listVaults",
+      "paging": "cursor",
+      "cursorField": "id",
+      "limit": 2,
+      "maxItems": 3,
+      "pages": [
+        {
+          "request": {
+            "startingAfter": null,
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": true,
+            "items": [
+              {
+                "id": "6630f1c2a9e4b5d7c8e90001",
+                "extra": "item 1"
+              },
+              {
+                "id": "6630f1c2a9e4b5d7c8e90002",
+                "extra": "item 2"
+              }
+            ],
+            "startingAfter": "6630f1c2a9e4b5d7c8e90002"
+          }
+        },
+        {
+          "request": {
+            "startingAfter": "6630f1c2a9e4b5d7c8e90002",
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": true,
+            "items": [
+              {
+                "id": "6630f1c2a9e4b5d7c8e90003",
+                "extra": "item 3"
+              },
+              {
+                "id": "6630f1c2a9e4b5d7c8e90004",
+                "extra": "item 4"
+              }
+            ],
+            "startingAfter": "6630f1c2a9e4b5d7c8e90004"
+          }
+        }
+      ],
+      "expected": {
+        "items": [
+          "6630f1c2a9e4b5d7c8e90001",
+          "6630f1c2a9e4b5d7c8e90002",
+          "6630f1c2a9e4b5d7c8e90003"
+        ],
+        "stop": "max_items"
+      },
+      "maxLimit": 50
+    },
+    {
+      "name": "max_items_at_page_end",
+      "description": "maxItems 2 with a full first page: stop there, though more follow.",
+      "operationId": "listVaults",
+      "paging": "cursor",
+      "cursorField": "id",
+      "limit": 2,
+      "maxItems": 2,
+      "pages": [
+        {
+          "request": {
+            "startingAfter": null,
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "hasMore": true,
+            "items": [
+              {
+                "id": "6630f1c2a9e4b5d7c8e90001",
+                "extra": "item 1"
+              },
+              {
+                "id": "6630f1c2a9e4b5d7c8e90002",
+                "extra": "item 2"
+              }
+            ],
+            "startingAfter": "6630f1c2a9e4b5d7c8e90002"
+          }
+        }
+      ],
+      "expected": {
+        "items": [
+          "6630f1c2a9e4b5d7c8e90001",
+          "6630f1c2a9e4b5d7c8e90002"
+        ],
+        "stop": "max_items"
+      },
+      "maxLimit": 50
+    },
+    {
+      "name": "offset_two_pages",
+      "description": "Offset paging (listApiKeySigningKeys): the next offset is the offset plus the items received, until total is reached.",
+      "operationId": "listApiKeySigningKeys",
+      "paging": "offset",
+      "cursorField": null,
+      "limit": 1,
+      "pages": [
+        {
+          "request": {
+            "offset": 0,
+            "limit": 1
+          },
+          "response": {
+            "limit": 1,
+            "offset": 0,
+            "total": 2,
+            "items": [
+              {
+                "fingerprint": "SHA256:1K9sRW4V/tM+To9K/9728DyV3Qg2kE7x/9UELb/Nixg"
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "offset": 1,
+            "limit": 1
+          },
+          "response": {
+            "limit": 1,
+            "offset": 1,
+            "total": 2,
+            "items": [
+              {
+                "fingerprint": "SHA256:NC4XT6Zk48B1y5dLbXZWM+WGfRk7NI+3YinOrusjMgw"
+              }
+            ]
+          }
+        }
+      ],
+      "itemField": "fingerprint",
+      "expected": {
+        "items": [
+          "SHA256:1K9sRW4V/tM+To9K/9728DyV3Qg2kE7x/9UELb/Nixg",
+          "SHA256:NC4XT6Zk48B1y5dLbXZWM+WGfRk7NI+3YinOrusjMgw"
+        ],
+        "stop": "end"
+      },
+      "maxLimit": 2
+    },
+    {
+      "name": "offset_empty_page_before_total",
+      "description": "An empty offset page before total is reached: stop.",
+      "operationId": "listApiKeySigningKeys",
+      "paging": "offset",
+      "cursorField": null,
+      "limit": 2,
+      "pages": [
+        {
+          "request": {
+            "offset": 0,
+            "limit": 2
+          },
+          "response": {
+            "limit": 2,
+            "offset": 0,
+            "total": 3,
+            "items": []
+          }
+        }
+      ],
+      "itemField": "fingerprint",
+      "expected": {
+        "items": [],
+        "stop": "empty_page"
+      },
+      "maxLimit": 2
+    }
+  ]
+}

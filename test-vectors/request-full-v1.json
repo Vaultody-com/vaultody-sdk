@@ -1,0 +1,280 @@
+{
+  "format": "vaultody request authentication headers, v1",
+  "warning": "TEST-ONLY KEYS AND SECRETS. Every secret and private key in this file is public. Never use them outside tests.",
+  "source": {
+    "generator": "test-vectors/tools/generate-gateway-vectors.js",
+    "gateway": {
+      "commit": "1a84dd507bb72153e2f2238fea9ac299935cc7fe"
+    }
+  },
+  "wire": {
+    "headers": "x-api-key, x-api-passphrase, x-api-timestamp, x-api-sign (HMAC v2, see request-hmac-v2.json), x-api-sign-version: 2, x-api-nonce, x-api-version when not empty, and with a key pair x-api-keypair-sign (base64 of the signature over the key-pair string: Ed25519 the raw 64 bytes, P-256 ECDSA SHA-256 in DER) and x-api-keypair-id (the key's fingerprint, see request-keypair-v1.json)",
+    "keypairSignedString": "the tag \"vaultody-request-keypair-v1\", the x-api-key, then the HMAC v2 fields in the same order, one per line (as the gateway builds it)",
+    "checks": "every case was accepted by the gateway's own HMAC and key-pair checks before it was written"
+  },
+  "caseFormat": {
+    "credentials": "the API key, secret and passphrase every case signs with",
+    "keys": "the key pairs, as in request-keypair-v1.json",
+    "key": "the key pair the request is signed with, or null for an API key without one",
+    "request": "the fixed clock (timestamp) and nonce and the request fields",
+    "expected": "headers: every authentication header, in this order; x-api-keypair-sign is null when keypairSignature is \"verify\" (P-256): sign, then verify it over keypairSignedStringBase64 with the key"
+  },
+  "credentials": {
+    "apiKey": "2458c9acff71d503a452d76221c85c2cbff4dcaf",
+    "apiSecret": "9PRj8ICIohJMpg==",
+    "passphrase": "TEST-ONLY passphrase 7"
+  },
+  "keys": {
+    "ed25519": {
+      "label": "TEST-ONLY client key ed25519",
+      "algorithm": "ed25519",
+      "privateKeyPkcs8Pem": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIJFshX6neOqm7ik5VQo+BzVJsH6U1XYej9XrmIw8iBuS\n-----END PRIVATE KEY-----\n",
+      "publicKeySpkiPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAiMHPkJ18Hr4/AwqX3xbjFc+aXQcvZhwJ1Bf0T8xhu3Y=\n-----END PUBLIC KEY-----\n",
+      "publicKeySpkiDerBase64": "MCowBQYDK2VwAyEAiMHPkJ18Hr4/AwqX3xbjFc+aXQcvZhwJ1Bf0T8xhu3Y=",
+      "fingerprint": "SHA256:1K9sRW4V/tM+To9K/9728DyV3Qg2kE7x/9UELb/Nixg"
+    },
+    "p256": {
+      "label": "TEST-ONLY client key p-256",
+      "algorithm": "p-256",
+      "privateKeyPkcs8Pem": "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgkRPu4TWVtGP28izy\nDdaHG6Te5UjYALl8gNi1qzBhCEehRANCAAQjKDAye7Jg+OptMgo5YowXrslY2TwO\nKpeSA/eVYtcGce5pMQ+LQ6o0XV0IMQ+I0Oh4BSqKwdZCceykmATbyoYW\n-----END PRIVATE KEY-----\n",
+      "publicKeySpkiPem": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEIygwMnuyYPjqbTIKOWKMF67JWNk8\nDiqXkgP3lWLXBnHuaTEPi0OqNF1dCDEPiNDoeAUqisHWQnHspJgE28qGFg==\n-----END PUBLIC KEY-----\n",
+      "publicKeySpkiDerBase64": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEIygwMnuyYPjqbTIKOWKMF67JWNk8DiqXkgP3lWLXBnHuaTEPi0OqNF1dCDEPiNDoeAUqisHWQnHspJgE28qGFg==",
+      "fingerprint": "SHA256:SlZCRgjejuk801azfE4TIgrUHjkrrmUqn+Xf4YOdoC4"
+    }
+  },
+  "cases": [
+    {
+      "name": "legacy_get_list_vaults",
+      "description": "An API key without a key pair: HMAC v2 with a nonce, no key-pair headers.",
+      "key": null,
+      "request": {
+        "timestamp": "1794201000",
+        "method": "GET",
+        "path": "/vaults/main",
+        "apiVersion": "2026-03-20",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "0c9b8a7f6e5d4c3b2a1908f7e6d5c4b3",
+        "query": "limit=50",
+        "body": ""
+      },
+      "expected": {
+        "headers": {
+          "x-api-key": "2458c9acff71d503a452d76221c85c2cbff4dcaf",
+          "x-api-passphrase": "TEST-ONLY passphrase 7",
+          "x-api-timestamp": "1794201000",
+          "x-api-sign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+          "x-api-sign-version": "2",
+          "x-api-nonce": "0c9b8a7f6e5d4c3b2a1908f7e6d5c4b3",
+          "x-api-version": "2026-03-20"
+        },
+        "keypairSignedStringBase64": null,
+        "keypairSignature": "none"
+      }
+    },
+    {
+      "name": "legacy_post_create_address",
+      "description": "POST with a body, no key pair.",
+      "key": null,
+      "request": {
+        "timestamp": "1794201000",
+        "method": "POST",
+        "path": "/vaults/6630f1c2a9e4b5d7c8e9f0a1/bitcoin/mainnet/addresses",
+        "apiVersion": "2026-03-20",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5",
+        "query": "",
+        "body": "{\"context\":\"yes\",\"data\":{\"item\":{\"label\":\"deposit-7\"}}}"
+      },
+      "expected": {
+        "headers": {
+          "x-api-key": "2458c9acff71d503a452d76221c85c2cbff4dcaf",
+          "x-api-passphrase": "TEST-ONLY passphrase 7",
+          "x-api-timestamp": "1794201000",
+          "x-api-sign": "RihhIbKRrSm28lZRxYx7BjMu2JgwSAL76hXvJ5X2uiE=",
+          "x-api-sign-version": "2",
+          "x-api-nonce": "6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5",
+          "x-api-version": "2026-03-20"
+        },
+        "keypairSignedStringBase64": null,
+        "keypairSignature": "none"
+      }
+    },
+    {
+      "name": "legacy_without_api_version",
+      "description": "No x-api-version: the header is left out and its line in the signed string is empty.",
+      "key": null,
+      "request": {
+        "timestamp": "1794201000",
+        "method": "GET",
+        "path": "/vaults/main",
+        "apiVersion": "",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "0c9b8a7f6e5d4c3b2a1908f7e6d5c4b3",
+        "query": "limit=50",
+        "body": ""
+      },
+      "expected": {
+        "headers": {
+          "x-api-key": "2458c9acff71d503a452d76221c85c2cbff4dcaf",
+          "x-api-passphrase": "TEST-ONLY passphrase 7",
+          "x-api-timestamp": "1794201000",
+          "x-api-sign": "RpCokOTtPr4SWgHRa6FEkQMTla07f7OrNPCL/VR50Kc=",
+          "x-api-sign-version": "2",
+          "x-api-nonce": "0c9b8a7f6e5d4c3b2a1908f7e6d5c4b3"
+        },
+        "keypairSignedStringBase64": null,
+        "keypairSignature": "none"
+      }
+    },
+    {
+      "name": "ed25519_get_signing_keys",
+      "description": "The signing-keys check, signed with an Ed25519 key pair.",
+      "key": "ed25519",
+      "request": {
+        "timestamp": "1794201000",
+        "method": "GET",
+        "path": "/api-keys/current/signing-keys",
+        "apiVersion": "2026-03-20",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "0c9b8a7f6e5d4c3b2a1908f7e6d5c4b3",
+        "query": "",
+        "body": ""
+      },
+      "expected": {
+        "headers": {
+          "x-api-key": "2458c9acff71d503a452d76221c85c2cbff4dcaf",
+          "x-api-passphrase": "TEST-ONLY passphrase 7",
+          "x-api-timestamp": "1794201000",
+          "x-api-sign": "iqzqE1+T6KeG11+W4GwOsx5+dymS9IHG4EqV8uZcnsQ=",
+          "x-api-sign-version": "2",
+          "x-api-nonce": "0c9b8a7f6e5d4c3b2a1908f7e6d5c4b3",
+          "x-api-version": "2026-03-20",
+          "x-api-keypair-sign": "9c/ruMbWgkeMOR1D3ErIJ9IgbzVzZAN1D8aZMpl2kKLymDb4PWjRuKDDy5uRwgvjbv5l1FcuZrmbQRx+T8KUDg==",
+          "x-api-keypair-id": "SHA256:1K9sRW4V/tM+To9K/9728DyV3Qg2kE7x/9UELb/Nixg"
+        },
+        "keypairSignedStringBase64": "dmF1bHRvZHktcmVxdWVzdC1rZXlwYWlyLXYxCjI0NThjOWFjZmY3MWQ1MDNhNDUyZDc2MjIxYzg1YzJjYmZmNGRjYWYKMTc5NDIwMTAwMApHRVQKL2FwaS1rZXlzL2N1cnJlbnQvc2lnbmluZy1rZXlzCjIwMjYtMDMtMjAKVEVTVC1PTkxZIHBhc3NwaHJhc2UgNwowYzliOGE3ZjZlNWQ0YzNiMmExOTA4ZjdlNmQ1YzRiMwoK",
+        "keypairSignature": "exact"
+      }
+    },
+    {
+      "name": "ed25519_post_create_address",
+      "description": "POST with a body, signed with an Ed25519 key pair. Ed25519 is deterministic, so the signature is exact.",
+      "key": "ed25519",
+      "request": {
+        "timestamp": "1794201000",
+        "method": "POST",
+        "path": "/vaults/6630f1c2a9e4b5d7c8e9f0a1/bitcoin/mainnet/addresses",
+        "apiVersion": "2026-03-20",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5",
+        "query": "",
+        "body": "{\"context\":\"yes\",\"data\":{\"item\":{\"label\":\"deposit-7\"}}}"
+      },
+      "expected": {
+        "headers": {
+          "x-api-key": "2458c9acff71d503a452d76221c85c2cbff4dcaf",
+          "x-api-passphrase": "TEST-ONLY passphrase 7",
+          "x-api-timestamp": "1794201000",
+          "x-api-sign": "RihhIbKRrSm28lZRxYx7BjMu2JgwSAL76hXvJ5X2uiE=",
+          "x-api-sign-version": "2",
+          "x-api-nonce": "6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5",
+          "x-api-version": "2026-03-20",
+          "x-api-keypair-sign": "VFW05csovfaf4jMrcXRfAjDqZ/A3iZCDXO71ffX0YG5FHZO3cxFSR/jrOg4I1q1I3ZGyZmbqR22S1OPxtoZjBQ==",
+          "x-api-keypair-id": "SHA256:1K9sRW4V/tM+To9K/9728DyV3Qg2kE7x/9UELb/Nixg"
+        },
+        "keypairSignedStringBase64": "dmF1bHRvZHktcmVxdWVzdC1rZXlwYWlyLXYxCjI0NThjOWFjZmY3MWQ1MDNhNDUyZDc2MjIxYzg1YzJjYmZmNGRjYWYKMTc5NDIwMTAwMApQT1NUCi92YXVsdHMvNjYzMGYxYzJhOWU0YjVkN2M4ZTlmMGExL2JpdGNvaW4vbWFpbm5ldC9hZGRyZXNzZXMKMjAyNi0wMy0yMApURVNULU9OTFkgcGFzc3BocmFzZSA3CjZmMWMyYTllMGI1ZDQ3YzhhOWU0ZjBhMWMyYjNkNGU1Cgp7ImNvbnRleHQiOiJ5ZXMiLCJkYXRhIjp7Iml0ZW0iOnsibGFiZWwiOiJkZXBvc2l0LTcifX19",
+        "keypairSignature": "exact"
+      }
+    },
+    {
+      "name": "ed25519_unicode_body",
+      "description": "A non-ASCII body: both signatures cover its UTF-8 bytes.",
+      "key": "ed25519",
+      "request": {
+        "timestamp": "1794201000",
+        "method": "POST",
+        "path": "/vaults/6630f1c2a9e4b5d7c8e9f0a1/bitcoin/mainnet/addresses",
+        "apiVersion": "2026-03-20",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5",
+        "query": "",
+        "body": "{\"data\":{\"item\":{\"label\":\"Сметка ✓ 東京\",\"vaultAccountId\":\"6630f1c2a9e4b5d7c8e9f0e2\"}}}"
+      },
+      "expected": {
+        "headers": {
+          "x-api-key": "2458c9acff71d503a452d76221c85c2cbff4dcaf",
+          "x-api-passphrase": "TEST-ONLY passphrase 7",
+          "x-api-timestamp": "1794201000",
+          "x-api-sign": "x2ObZkl6Az2QYGah7y2//QLxUdgMkV9Vkr3ujMyYn0c=",
+          "x-api-sign-version": "2",
+          "x-api-nonce": "6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5",
+          "x-api-version": "2026-03-20",
+          "x-api-keypair-sign": "qDBJj8L8sOMR19upWngqozlRSDQwFovm60w7eeDdnLroWlv3m+xioj8A5GMJGwrTsvm0rcHrjR1iQMlPIWTcAg==",
+          "x-api-keypair-id": "SHA256:1K9sRW4V/tM+To9K/9728DyV3Qg2kE7x/9UELb/Nixg"
+        },
+        "keypairSignedStringBase64": "dmF1bHRvZHktcmVxdWVzdC1rZXlwYWlyLXYxCjI0NThjOWFjZmY3MWQ1MDNhNDUyZDc2MjIxYzg1YzJjYmZmNGRjYWYKMTc5NDIwMTAwMApQT1NUCi92YXVsdHMvNjYzMGYxYzJhOWU0YjVkN2M4ZTlmMGExL2JpdGNvaW4vbWFpbm5ldC9hZGRyZXNzZXMKMjAyNi0wMy0yMApURVNULU9OTFkgcGFzc3BocmFzZSA3CjZmMWMyYTllMGI1ZDQ3YzhhOWU0ZjBhMWMyYjNkNGU1Cgp7ImRhdGEiOnsiaXRlbSI6eyJsYWJlbCI6ItCh0LzQtdGC0LrQsCDinJMg5p2x5LqsIiwidmF1bHRBY2NvdW50SWQiOiI2NjMwZjFjMmE5ZTRiNWQ3YzhlOWYwZTIifX19",
+        "keypairSignature": "exact"
+      }
+    },
+    {
+      "name": "p256_post_create_address",
+      "description": "POST signed with a P-256 key pair: ECDSA is random, so the runner signs and then verifies (DER, SHA-256) instead of comparing.",
+      "key": "p256",
+      "request": {
+        "timestamp": "1794201000",
+        "method": "POST",
+        "path": "/vaults/6630f1c2a9e4b5d7c8e9f0a1/bitcoin/mainnet/addresses",
+        "apiVersion": "2026-03-20",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5",
+        "query": "",
+        "body": "{\"context\":\"yes\",\"data\":{\"item\":{\"label\":\"deposit-7\"}}}"
+      },
+      "expected": {
+        "headers": {
+          "x-api-key": "2458c9acff71d503a452d76221c85c2cbff4dcaf",
+          "x-api-passphrase": "TEST-ONLY passphrase 7",
+          "x-api-timestamp": "1794201000",
+          "x-api-sign": "RihhIbKRrSm28lZRxYx7BjMu2JgwSAL76hXvJ5X2uiE=",
+          "x-api-sign-version": "2",
+          "x-api-nonce": "6f1c2a9e0b5d47c8a9e4f0a1c2b3d4e5",
+          "x-api-version": "2026-03-20",
+          "x-api-keypair-sign": null,
+          "x-api-keypair-id": "SHA256:SlZCRgjejuk801azfE4TIgrUHjkrrmUqn+Xf4YOdoC4"
+        },
+        "keypairSignedStringBase64": "dmF1bHRvZHktcmVxdWVzdC1rZXlwYWlyLXYxCjI0NThjOWFjZmY3MWQ1MDNhNDUyZDc2MjIxYzg1YzJjYmZmNGRjYWYKMTc5NDIwMTAwMApQT1NUCi92YXVsdHMvNjYzMGYxYzJhOWU0YjVkN2M4ZTlmMGExL2JpdGNvaW4vbWFpbm5ldC9hZGRyZXNzZXMKMjAyNi0wMy0yMApURVNULU9OTFkgcGFzc3BocmFzZSA3CjZmMWMyYTllMGI1ZDQ3YzhhOWU0ZjBhMWMyYjNkNGU1Cgp7ImNvbnRleHQiOiJ5ZXMiLCJkYXRhIjp7Iml0ZW0iOnsibGFiZWwiOiJkZXBvc2l0LTcifX19",
+        "keypairSignature": "verify"
+      }
+    },
+    {
+      "name": "p256_get_list_vaults",
+      "description": "GET signed with a P-256 key pair.",
+      "key": "p256",
+      "request": {
+        "timestamp": "1794201000",
+        "method": "GET",
+        "path": "/vaults/main",
+        "apiVersion": "2026-03-20",
+        "passphrase": "TEST-ONLY passphrase 7",
+        "nonce": "0c9b8a7f6e5d4c3b2a1908f7e6d5c4b3",
+        "query": "limit=50",
+        "body": ""
+      },
+      "expected": {
+        "headers": {
+          "x-api-key": "2458c9acff71d503a452d76221c85c2cbff4dcaf",
+          "x-api-passphrase": "TEST-ONLY passphrase 7",
+          "x-api-timestamp": "1794201000",
+          "x-api-sign": "OYGsg6Bpb7SxTDHUg6r7NEJIyrnnGeKw9UJW1FoBKCY=",
+          "x-api-sign-version": "2",
+          "x-api-nonce": "0c9b8a7f6e5d4c3b2a1908f7e6d5c4b3",
+          "x-api-version": "2026-03-20",
+          "x-api-keypair-sign": null,
+          "x-api-keypair-id": "SHA256:SlZCRgjejuk801azfE4TIgrUHjkrrmUqn+Xf4YOdoC4"
+        },
+        "keypairSignedStringBase64": "dmF1bHRvZHktcmVxdWVzdC1rZXlwYWlyLXYxCjI0NThjOWFjZmY3MWQ1MDNhNDUyZDc2MjIxYzg1YzJjYmZmNGRjYWYKMTc5NDIwMTAwMApHRVQKL3ZhdWx0cy9tYWluCjIwMjYtMDMtMjAKVEVTVC1PTkxZIHBhc3NwaHJhc2UgNwowYzliOGE3ZjZlNWQ0YzNiMmExOTA4ZjdlNmQ1YzRiMwpsaW1pdD01MAo=",
+        "keypairSignature": "verify"
+      }
+    }
+  ]
+}

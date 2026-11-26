@@ -1,0 +1,184 @@
+{
+  "format": "vaultody P-256 signature encoding, IEEE P1363 to DER, v1",
+  "warning": "TEST-ONLY key. Its private half is derived from a fixed label and is public.",
+  "source": {
+    "generator": "test-vectors/tools/generate-sdk-vectors.js",
+    "crossChecks": "every real signature verified as DER by node:crypto, and by openssl whenever an openssl binary is on PATH (the generator and --check)"
+  },
+  "rules": {
+    "input": "exactly 64 bytes: r then s, each 32 bytes big-endian (Web Crypto, Azure Key Vault, some KMS APIs); any other length is invalid_length",
+    "output": "DER SEQUENCE { INTEGER r, INTEGER s }: each INTEGER without leading zero bytes, then with one 0x00 added when its first byte is 0x80 or above; the sequence length always fits one byte",
+    "zero": "r or s equal to zero is not a signature: zero_integer",
+    "signer": "A signer's P-256 output of exactly 64 bytes is P1363 and is converted, even when it starts like DER (0x30 then 62, as p1363_starts_like_der does): a DER signature is 70 to 72 bytes for every signature a P-256 key makes in practice. Each SDK runs that case through its signer path (a signer callback returning those 64 bytes for the case's message), not only through its converter."
+  },
+  "caseFormat": {
+    "p1363Hex": "the r||s input",
+    "messageBase64": "for a real signature, the message the TEST-ONLY key signed (SHA-256), so a runner can also verify the DER; null for a synthetic case",
+    "expected": "{ derHex } or { error }"
+  },
+  "publicKeySpkiDerBase64": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEqkuB+igweHWDLP/Thivt30B+fobHPJRTJnnGiD+CtNExYYebh5mNT8xvbcGOLcsTlZMsDhQZ+nP7sVpMfFdDgA==",
+  "cases": [
+    {
+      "name": "neither_high_bit",
+      "description": "r and s both start below 0x80: two 32-byte INTEGERs.",
+      "p1363Hex": "43695868f6c2fb5908522dc4b3792bbfe02ae3a3179205fb450e638f9f3bbb5b5b02b403a37675f18d58bc38d083b6cb0fad78c07c9c1315b284349c1d0afafd",
+      "messageBase64": "dmF1bHRvZHkgc2RrIHAxMzYzIHZlY3RvciBuZWl0aGVyX2hpZ2hfYml0",
+      "expected": {
+        "derHex": "3044022043695868f6c2fb5908522dc4b3792bbfe02ae3a3179205fb450e638f9f3bbb5b02205b02b403a37675f18d58bc38d083b6cb0fad78c07c9c1315b284349c1d0afafd"
+      }
+    },
+    {
+      "name": "r_high_bit",
+      "description": "r starts at 0x80 or above: its INTEGER gets a leading 0x00 (33 bytes).",
+      "p1363Hex": "aa0c965852b9b6c76b4fa65a1c822f1c76c1d203d992f0d6eb6acb56e4bc30fc577b253a6bbcdb4c03b0e0f25f7f72614bd9a14f79ffc8632194cce7f6611ed6",
+      "messageBase64": "dmF1bHRvZHkgc2RrIHAxMzYzIHZlY3RvciByX2hpZ2hfYml0",
+      "expected": {
+        "derHex": "3045022100aa0c965852b9b6c76b4fa65a1c822f1c76c1d203d992f0d6eb6acb56e4bc30fc0220577b253a6bbcdb4c03b0e0f25f7f72614bd9a14f79ffc8632194cce7f6611ed6"
+      }
+    },
+    {
+      "name": "s_high_bit",
+      "description": "s starts at 0x80 or above: its INTEGER gets a leading 0x00.",
+      "p1363Hex": "55fbb15efd481be4d28a894f048b557df1155af0c5156770f39c5ccd5ea2f71f8f500f5fe2dbcb873c1211f476d1faef82969eb77a0d464ff639d7ea4c038517",
+      "messageBase64": "dmF1bHRvZHkgc2RrIHAxMzYzIHZlY3RvciBzX2hpZ2hfYml0",
+      "expected": {
+        "derHex": "3045022055fbb15efd481be4d28a894f048b557df1155af0c5156770f39c5ccd5ea2f71f0221008f500f5fe2dbcb873c1211f476d1faef82969eb77a0d464ff639d7ea4c038517"
+      }
+    },
+    {
+      "name": "both_high_bits",
+      "description": "Both get a leading 0x00: the longest DER, 72 bytes.",
+      "p1363Hex": "ca2a9692b33b7a0136e2b0455824336cbfed4ab7be5ab94872ea58959fbea9f1c5a1447e5cccec6c4e450c0cebdd79fbab8f785a5d0d30c1c6a677d90d89be0a",
+      "messageBase64": "dmF1bHRvZHkgc2RrIHAxMzYzIHZlY3RvciBib3RoX2hpZ2hfYml0cw==",
+      "expected": {
+        "derHex": "3046022100ca2a9692b33b7a0136e2b0455824336cbfed4ab7be5ab94872ea58959fbea9f1022100c5a1447e5cccec6c4e450c0cebdd79fbab8f785a5d0d30c1c6a677d90d89be0a"
+      }
+    },
+    {
+      "name": "r_leading_zero_byte",
+      "description": "r has a leading zero byte: DER drops it (31 bytes).",
+      "p1363Hex": "005e2fd9cfc1337121111d2293e3af6fb838606c61823e96f1d2b4ae749454c601f2c3a8859f019f1295283c9a31ab75b41fc942ba325c4bb77b93d342d988cb",
+      "messageBase64": "dmF1bHRvZHkgc2RrIHAxMzYzIHZlY3RvciByX2xlYWRpbmdfemVyb19ieXRl",
+      "expected": {
+        "derHex": "3043021f5e2fd9cfc1337121111d2293e3af6fb838606c61823e96f1d2b4ae749454c6022001f2c3a8859f019f1295283c9a31ab75b41fc942ba325c4bb77b93d342d988cb"
+      }
+    },
+    {
+      "name": "r_leading_zero_then_high_bit",
+      "description": "r = 0x00 then a byte at 0x80 or above: the zero stays, as the sign byte (32 bytes).",
+      "p1363Hex": "00eae61124e46e82cda51a4d606e9eea312eed54f63e726c047171175bb895f7a57728510fe09484f4b42594626075c556260220294514b49e106ccd750ce0e6",
+      "messageBase64": "dmF1bHRvZHkgc2RrIHAxMzYzIHZlY3RvciByX2xlYWRpbmdfemVyb190aGVuX2hpZ2hfYml0",
+      "expected": {
+        "derHex": "3045022000eae61124e46e82cda51a4d606e9eea312eed54f63e726c047171175bb895f7022100a57728510fe09484f4b42594626075c556260220294514b49e106ccd750ce0e6"
+      }
+    },
+    {
+      "name": "s_leading_zero_byte",
+      "description": "s has a leading zero byte: DER drops it.",
+      "p1363Hex": "d2417a8395009c4dd64e7cfe827662da6fb94733aa1ee2aa04d9b04b50b3fa10001e051527f53082f11760da9f848865cecde1d0cb0bb111d748279e58448407",
+      "messageBase64": "dmF1bHRvZHkgc2RrIHAxMzYzIHZlY3RvciBzX2xlYWRpbmdfemVyb19ieXRl",
+      "expected": {
+        "derHex": "3044022100d2417a8395009c4dd64e7cfe827662da6fb94733aa1ee2aa04d9b04b50b3fa10021f1e051527f53082f11760da9f848865cecde1d0cb0bb111d748279e58448407"
+      }
+    },
+    {
+      "name": "p1363_starts_like_der",
+      "description": "r starts with 0x30 0x3E, the first two bytes of a 64-byte DER SEQUENCE: still P1363, converted like any other 64-byte P-256 signature.",
+      "p1363Hex": "303e5d095db7aa51b26398d980fd829c818c16a1330f0bff6e1f5606994942363057af8f9e6cb9d6ac2f46c3496df5b19cebbb9d34469c75766601bb2b935d39",
+      "messageBase64": "dmF1bHRvZHkgc2RrIHAxMzYzIHZlY3RvciBwMTM2M19zdGFydHNfbGlrZV9kZXI=",
+      "expected": {
+        "derHex": "30440220303e5d095db7aa51b26398d980fd829c818c16a1330f0bff6e1f56069949423602203057af8f9e6cb9d6ac2f46c3496df5b19cebbb9d34469c75766601bb2b935d39"
+      }
+    },
+    {
+      "name": "smallest_integers",
+      "description": "r = s = 1: one-byte INTEGERs.",
+      "p1363Hex": "00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001",
+      "messageBase64": null,
+      "expected": {
+        "derHex": "3006020101020101"
+      }
+    },
+    {
+      "name": "small_integer_high_bit",
+      "description": "r = 0x80 alone: 0x00 0x80.",
+      "p1363Hex": "00000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000001",
+      "messageBase64": null,
+      "expected": {
+        "derHex": "300702020080020101"
+      }
+    },
+    {
+      "name": "two_leading_zero_bytes",
+      "description": "r with two leading zero bytes: both dropped.",
+      "p1363Hex": "00007f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f1111111111111111111111111111111111111111111111111111111111111111",
+      "messageBase64": null,
+      "expected": {
+        "derHex": "3042021e7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f02201111111111111111111111111111111111111111111111111111111111111111"
+      }
+    },
+    {
+      "name": "all_ones",
+      "description": "r = s = 2^256 - 1: the longest form.",
+      "p1363Hex": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "messageBase64": null,
+      "expected": {
+        "derHex": "3046022100ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff022100ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      }
+    },
+    {
+      "name": "length_63",
+      "description": "63 bytes.",
+      "p1363Hex": "111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+      "messageBase64": null,
+      "expected": {
+        "error": "invalid_length"
+      }
+    },
+    {
+      "name": "length_65",
+      "description": "65 bytes.",
+      "p1363Hex": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+      "messageBase64": null,
+      "expected": {
+        "error": "invalid_length"
+      }
+    },
+    {
+      "name": "der_given",
+      "description": "Already DER (70 bytes): not P1363.",
+      "p1363Hex": "30440220111111111111111111111111111111111111111111111111111111111111111102202222222222222222222222222222222222222222222222222222222222222222",
+      "messageBase64": null,
+      "expected": {
+        "error": "invalid_length"
+      }
+    },
+    {
+      "name": "empty",
+      "description": "No bytes.",
+      "p1363Hex": "",
+      "messageBase64": null,
+      "expected": {
+        "error": "invalid_length"
+      }
+    },
+    {
+      "name": "r_zero",
+      "description": "r = 0.",
+      "p1363Hex": "00000000000000000000000000000000000000000000000000000000000000001111111111111111111111111111111111111111111111111111111111111111",
+      "messageBase64": null,
+      "expected": {
+        "error": "zero_integer"
+      }
+    },
+    {
+      "name": "s_zero",
+      "description": "s = 0.",
+      "p1363Hex": "11111111111111111111111111111111111111111111111111111111111111110000000000000000000000000000000000000000000000000000000000000000",
+      "messageBase64": null,
+      "expected": {
+        "error": "zero_integer"
+      }
+    }
+  ]
+}

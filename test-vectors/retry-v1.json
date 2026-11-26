@@ -1,0 +1,1480 @@
+{
+  "format": "vaultody retry decisions, v1",
+  "source": {
+    "generator": "test-vectors/tools/generate-sdk-vectors.js"
+  },
+  "constants": {
+    "maxAttempts": 5,
+    "baseDelayMs": 1000,
+    "maxDelayMs": 8000,
+    "deadlineMs": 30000,
+    "resendWindowMs": 2500,
+    "signatureMaxAgeMs": 25000
+  },
+  "rules": {
+    "classes": "read: GET and validateAddress, estimateTransactionFeeByAssetId, validateUtxoTransfer (contract/overlay.json retry). write: every other POST and PUT. keyMode keypair: the key pair was confirmed active through listApiKeySigningKeys, so replay protection always refuses a duplicate; legacy: no key pair, or one not confirmed, where prod replay protection may only report.",
+    "order": [
+      "verification_failed: fail (never retried).",
+      "2xx: return.",
+      "write, 409 duplicate_api_request_in_progress: outcome_unknown, inProgress.",
+      "write, 401 duplicate_api_request when resends > 0: outcome_unknown.",
+      "write, a replayed 5xx: outcome_unknown.",
+      "address_derivation_conflict or vault_accounts_creation_failed, not retried yet and (for a write) mayHaveRun false: retry, resign with a new nonce, no delay; otherwise return.",
+      "read: not_sent, sent_unknown, 429 and 5xx retry, re-signed, after the backoff; any other status returns.",
+      "write, sent_unknown or a 5xx: keypair, resends 0 and sinceFirstSendMs < resendWindowMs: retry, resend, no delay; otherwise outcome_unknown.",
+      "write, not_sent or 429 (neither ran): after the backoff, resend while signedAgeMs + delay < signatureMaxAgeMs; else resign if mayHaveRun is false; else outcome_unknown.",
+      "write, any other status: return."
+    ],
+    "backoff": "full jitter: floor(random × min(maxDelayMs, baseDelayMs × 2^(attempt − 1))), raised to Retry-After seconds × 1000 when the response carries a longer one",
+    "budget": "No retry when attempt >= maxAttempts or elapsedMs + delay > deadlineMs. Then: a read returns the response or fails with the transport error; a write is outcome_unknown when this attempt or an earlier one may have run (sent_unknown, 5xx, mayHaveRun), else returns or fails the same way.",
+    "mayHaveRun": "Whether an earlier attempt of the same call may have been carried out: sent_unknown and 5xx may have; not_sent and 429 did not.",
+    "nonce": "Every retry of a write keeps the call's x-api-nonce and its body (nonce: same): resend sends the same signed request again; resign signs it again with a fresh x-api-timestamp and fresh signatures over the same nonce, so the gateway's idempotency (per API key and nonce) sees one operation. One exception: the one immediate retry after address_derivation_conflict or vault_accounts_creation_failed, which say that nothing was executed, is signed again with a new nonce and the same body (nonce: new); with the same nonce the gateway would only replay the 409. Later retries of that call keep the new nonce. A read re-signed gets a new nonce (nonce: new). A new call always gets a new nonce."
+  },
+  "caseFormat": {
+    "input": "operation, keyMode, attempt (attempts made, this one included), elapsedMs (since the call started), signedAgeMs (age of the current signature), sinceFirstSendMs (since the current signed request was first sent), resends (of the current signed request before this attempt), mayHaveRun, conflictRetried, random (the jitter draw in [0, 1)), outcome",
+    "outcome": "{ type: not_sent | sent_unknown | verification_failed } or { type: response, status, code, replayed, retryAfterSeconds }",
+    "expected": "{ action: return | fail } | { action: retry, mode: resign | resend, nonce: same | new, delayMs } | { action: outcome_unknown, inProgress }"
+  },
+  "cases": [
+    {
+      "name": "read_ok",
+      "description": "A 2xx is returned.",
+      "input": {
+        "operation": "read",
+        "keyMode": "legacy",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 200,
+          "code": null,
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "return"
+      }
+    },
+    {
+      "name": "read_not_found",
+      "description": "A 4xx is returned to the caller as its typed error, never retried.",
+      "input": {
+        "operation": "read",
+        "keyMode": "legacy",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 404,
+          "code": "resource_not_found",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "return"
+      }
+    },
+    {
+      "name": "read_auth_error",
+      "description": "Neither is a 401.",
+      "input": {
+        "operation": "read",
+        "keyMode": "legacy",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 401,
+          "code": "invalid_api_sign",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "return"
+      }
+    },
+    {
+      "name": "read_bad_request",
+      "description": "Nor a 400.",
+      "input": {
+        "operation": "read",
+        "keyMode": "legacy",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 400,
+          "code": "invalid_pagination",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "return"
+      }
+    },
+    {
+      "name": "read_not_sent",
+      "description": "Connection failed before sending: re-signed and retried after a full-jitter backoff (attempt 1: up to 1 s).",
+      "input": {
+        "operation": "read",
+        "keyMode": "legacy",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "not_sent"
+        }
+      },
+      "expected": {
+        "action": "retry",
+        "mode": "resign",
+        "nonce": "new",
+        "delayMs": 500
+      }
+    },
+    {
+      "name": "read_sent_unknown",
+      "description": "A timeout after sending: a read is retried all the same (attempt 2: up to 2 s).",
+      "input": {
+        "operation": "read",
+        "keyMode": "legacy",
+        "attempt": 2,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "sent_unknown"
+        }
+      },
+      "expected": {
+        "action": "retry",
+        "mode": "resign",
+        "nonce": "new",
+        "delayMs": 1000
+      }
+    },
+    {
+      "name": "read_429",
+      "description": "Rate limited: re-signed, backoff (attempt 3: up to 4 s).",
+      "input": {
+        "operation": "read",
+        "keyMode": "legacy",
+        "attempt": 3,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.25,
+        "outcome": {
+          "type": "response",
+          "status": 429,
+          "code": "request_limit_reached",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "retry",
+        "mode": "resign",
+        "nonce": "new",
+        "delayMs": 1000
+      }
+    },
+    {
+      "name": "read_503_backoff_cap",
+      "description": "Backoff is capped at 8 s (attempt 4).",
+      "input": {
+        "operation": "read",
+        "keyMode": "legacy",
+        "attempt": 4,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.999,
+        "outcome": {
+          "type": "response",
+          "status": 503,
+          "code": null,
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "retry",
+        "mode": "resign",
+        "nonce": "new",
+        "delayMs": 7992
+      }
+    },
+    {
+      "name": "read_500_last_attempt",
+      "description": "The fifth attempt is the last: the error is returned.",
+      "input": {
+        "operation": "read",
+        "keyMode": "legacy",
+        "attempt": 5,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 500,
+          "code": "unexpected_server_error",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "return"
+      }
+    },
+    {
+      "name": "read_not_sent_last_attempt",
+      "description": "The fifth attempt failing to connect: the transport error is raised.",
+      "input": {
+        "operation": "read",
+        "keyMode": "legacy",
+        "attempt": 5,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "not_sent"
+        }
+      },
+      "expected": {
+        "action": "fail"
+      }
+    },
+    {
+      "name": "read_retry_after",
+      "description": "A Retry-After header is honoured when it asks for longer than the backoff.",
+      "input": {
+        "operation": "read",
+        "keyMode": "legacy",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.1,
+        "outcome": {
+          "type": "response",
+          "status": 429,
+          "code": "request_limit_reached",
+          "replayed": false,
+          "retryAfterSeconds": 3
+        }
+      },
+      "expected": {
+        "action": "retry",
+        "mode": "resign",
+        "nonce": "new",
+        "delayMs": 3000
+      }
+    },
+    {
+      "name": "read_retry_after_shorter",
+      "description": "A Retry-After shorter than the backoff changes nothing.",
+      "input": {
+        "operation": "read",
+        "keyMode": "legacy",
+        "attempt": 2,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.9,
+        "outcome": {
+          "type": "response",
+          "status": 429,
+          "code": "request_limit_reached",
+          "replayed": false,
+          "retryAfterSeconds": 1
+        }
+      },
+      "expected": {
+        "action": "retry",
+        "mode": "resign",
+        "nonce": "new",
+        "delayMs": 1800
+      }
+    },
+    {
+      "name": "read_deadline",
+      "description": "A retry that would end past the 30 s deadline is not made.",
+      "input": {
+        "operation": "read",
+        "keyMode": "legacy",
+        "attempt": 1,
+        "elapsedMs": 29500,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.9,
+        "outcome": {
+          "type": "response",
+          "status": 502,
+          "code": null,
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "return"
+      }
+    },
+    {
+      "name": "read_verification_failed",
+      "description": "A response that fails its signature check is never retried.",
+      "input": {
+        "operation": "read",
+        "keyMode": "legacy",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "verification_failed"
+        }
+      },
+      "expected": {
+        "action": "fail"
+      }
+    },
+    {
+      "name": "write_created",
+      "description": "A 2xx is returned.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 201,
+          "code": null,
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "return"
+      }
+    },
+    {
+      "name": "write_replayed_created",
+      "description": "The replayed first answer to a resend is the outcome.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 1,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 201,
+          "code": null,
+          "replayed": true,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "return"
+      }
+    },
+    {
+      "name": "write_sent_unknown_resend",
+      "description": "A timeout after sending: the same signed request is sent again at once, within the gateway's 3 s replay-response window, to get the first answer.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 800,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "sent_unknown"
+        }
+      },
+      "expected": {
+        "action": "retry",
+        "mode": "resend",
+        "nonce": "same",
+        "delayMs": 0
+      }
+    },
+    {
+      "name": "write_sent_unknown_too_late",
+      "description": "Too late for the replay-response window (2.5 s with a margin): the outcome is unknown.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 2600,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "sent_unknown"
+        }
+      },
+      "expected": {
+        "action": "outcome_unknown",
+        "inProgress": false
+      }
+    },
+    {
+      "name": "write_sent_unknown_twice",
+      "description": "The resend timed out too: only one resend, then unknown.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 2,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 1500,
+        "resends": 1,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "sent_unknown"
+        }
+      },
+      "expected": {
+        "action": "outcome_unknown",
+        "inProgress": false
+      }
+    },
+    {
+      "name": "write_500_resend",
+      "description": "A 5xx may have run: one immediate resend of the same request gets the first answer.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 300,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 500,
+          "code": "unexpected_server_error",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "retry",
+        "mode": "resend",
+        "nonce": "same",
+        "delayMs": 0
+      }
+    },
+    {
+      "name": "write_500_too_late",
+      "description": "A 5xx after the window: unknown.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 2700,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 500,
+          "code": "unexpected_server_error",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "outcome_unknown",
+        "inProgress": false
+      }
+    },
+    {
+      "name": "write_replayed_500",
+      "description": "The replayed first answer is itself a 5xx: unknown.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 1,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 500,
+          "code": "unexpected_server_error",
+          "replayed": true,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "outcome_unknown",
+        "inProgress": false
+      }
+    },
+    {
+      "name": "write_in_progress",
+      "description": "409 duplicate_api_request_in_progress: the first request is still running; unknown, in progress.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 1,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 409,
+          "code": "duplicate_api_request_in_progress",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "outcome_unknown",
+        "inProgress": true
+      }
+    },
+    {
+      "name": "write_duplicate_after_resend",
+      "description": "401 duplicate_api_request to a resend: the first request was received, but its answer is gone (past the 3 s window); unknown.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 1,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 401,
+          "code": "duplicate_api_request",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "outcome_unknown",
+        "inProgress": false
+      }
+    },
+    {
+      "name": "write_duplicate_first_send",
+      "description": "duplicate_api_request to a first send is an ordinary error.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 401,
+          "code": "duplicate_api_request",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "return"
+      }
+    },
+    {
+      "name": "write_not_sent_resend",
+      "description": "Not sent: the same signed request again, after a backoff.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 100,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "not_sent"
+        }
+      },
+      "expected": {
+        "action": "retry",
+        "mode": "resend",
+        "nonce": "same",
+        "delayMs": 500
+      }
+    },
+    {
+      "name": "write_not_sent_signature_too_old",
+      "description": "Not sent, and the signature would be older than 25 s when resent: re-signed, since nothing of this call ever reached the gateway.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 24800,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "not_sent"
+        }
+      },
+      "expected": {
+        "action": "retry",
+        "mode": "resign",
+        "nonce": "same",
+        "delayMs": 500
+      }
+    },
+    {
+      "name": "write_not_sent_signature_too_old_after_send",
+      "description": "The same, but an earlier attempt may have run: never re-signed; unknown.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 2,
+        "elapsedMs": 0,
+        "signedAgeMs": 24800,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": true,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "not_sent"
+        }
+      },
+      "expected": {
+        "action": "outcome_unknown",
+        "inProgress": false
+      }
+    },
+    {
+      "name": "write_429_resend",
+      "description": "A 429 is refused before the route, so the request never ran: the same request again after a backoff.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 2,
+        "elapsedMs": 0,
+        "signedAgeMs": 3000,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 429,
+          "code": "request_limit_reached",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "retry",
+        "mode": "resend",
+        "nonce": "same",
+        "delayMs": 1000
+      }
+    },
+    {
+      "name": "write_429_signature_too_old",
+      "description": "After a 429, with the signature too old to resend: re-signed.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 2,
+        "elapsedMs": 0,
+        "signedAgeMs": 24500,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 429,
+          "code": "request_limit_reached",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "retry",
+        "mode": "resign",
+        "nonce": "same",
+        "delayMs": 1000
+      }
+    },
+    {
+      "name": "write_429_after_possible_run",
+      "description": "A 429 to a resend of a request that may have run: resent while the signature is fresh enough.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 2,
+        "elapsedMs": 0,
+        "signedAgeMs": 1000,
+        "sinceFirstSendMs": 0,
+        "resends": 1,
+        "mayHaveRun": true,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 429,
+          "code": "request_limit_reached",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "retry",
+        "mode": "resend",
+        "nonce": "same",
+        "delayMs": 1000
+      }
+    },
+    {
+      "name": "write_429_after_possible_run_too_old",
+      "description": "... and unknown once it is not.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 2,
+        "elapsedMs": 0,
+        "signedAgeMs": 24500,
+        "sinceFirstSendMs": 0,
+        "resends": 1,
+        "mayHaveRun": true,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 429,
+          "code": "request_limit_reached",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "outcome_unknown",
+        "inProgress": false
+      }
+    },
+    {
+      "name": "write_address_conflict",
+      "description": "address_derivation_conflict is a collision with no side effect: one retry at once, as the docs say, signed again with a new nonce: nothing was executed, and with the same nonce the gateway would only replay the 409.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 409,
+          "code": "address_derivation_conflict",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "retry",
+        "mode": "resign",
+        "nonce": "new",
+        "delayMs": 0
+      }
+    },
+    {
+      "name": "write_address_conflict_twice",
+      "description": "Only one such retry.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 2,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": true,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 409,
+          "code": "address_derivation_conflict",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "return"
+      }
+    },
+    {
+      "name": "write_vault_accounts_conflict",
+      "description": "vault_accounts_creation_failed likewise: nothing was executed, so the one retry gets a new nonce.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 409,
+          "code": "vault_accounts_creation_failed",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "retry",
+        "mode": "resign",
+        "nonce": "new",
+        "delayMs": 0
+      }
+    },
+    {
+      "name": "write_conflict_after_possible_run",
+      "description": "Not re-signed when an earlier attempt may have run: the error is returned.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 2,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 1,
+        "mayHaveRun": true,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 409,
+          "code": "address_derivation_conflict",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "return"
+      }
+    },
+    {
+      "name": "write_double_spending",
+      "description": "A business 409 is returned.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 409,
+          "code": "double_spending",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "return"
+      }
+    },
+    {
+      "name": "write_nonce_reused",
+      "description": "409 api_nonce_reused: the nonce was used before for a different request; returned (a RequestSigningError), never retried.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 409,
+          "code": "api_nonce_reused",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "return"
+      }
+    },
+    {
+      "name": "write_in_progress_first_send",
+      "description": "409 duplicate_api_request_in_progress to a first send (an earlier request with this nonce is still running): unknown, in progress.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 409,
+          "code": "duplicate_api_request_in_progress",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "outcome_unknown",
+        "inProgress": true
+      }
+    },
+    {
+      "name": "write_forbidden",
+      "description": "A 403 is returned.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 403,
+          "code": "wallet_as_a_service_wallet_balance_not_enough",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "return"
+      }
+    },
+    {
+      "name": "write_verification_failed",
+      "description": "Never retried.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "verification_failed"
+        }
+      },
+      "expected": {
+        "action": "fail"
+      }
+    },
+    {
+      "name": "write_not_sent_last_attempt",
+      "description": "Out of attempts, nothing ever sent: the transport error.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 5,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "not_sent"
+        }
+      },
+      "expected": {
+        "action": "fail"
+      }
+    },
+    {
+      "name": "write_not_sent_last_attempt_after_possible_run",
+      "description": "Out of attempts after an attempt that may have run: unknown.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 5,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": true,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "not_sent"
+        }
+      },
+      "expected": {
+        "action": "outcome_unknown",
+        "inProgress": false
+      }
+    },
+    {
+      "name": "write_429_last_attempt",
+      "description": "Out of attempts on a 429 that never ran: the RateLimitError.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 5,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 429,
+          "code": "request_limit_reached",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "return"
+      }
+    },
+    {
+      "name": "write_500_last_attempt",
+      "description": "Out of attempts on a 5xx: unknown.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 5,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 300,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 503,
+          "code": null,
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "outcome_unknown",
+        "inProgress": false
+      }
+    },
+    {
+      "name": "write_not_sent_deadline",
+      "description": "A backoff past the 30 s deadline: no retry; nothing was sent.",
+      "input": {
+        "operation": "write",
+        "keyMode": "keypair",
+        "attempt": 3,
+        "elapsedMs": 28000,
+        "signedAgeMs": 100,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.9,
+        "outcome": {
+          "type": "not_sent"
+        }
+      },
+      "expected": {
+        "action": "fail"
+      }
+    },
+    {
+      "name": "legacy_sent_unknown",
+      "description": "A timeout after sending: never resent, since the gateway may not refuse a duplicate; unknown.",
+      "input": {
+        "operation": "write",
+        "keyMode": "legacy",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 300,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "sent_unknown"
+        }
+      },
+      "expected": {
+        "action": "outcome_unknown",
+        "inProgress": false
+      }
+    },
+    {
+      "name": "legacy_500",
+      "description": "A 5xx: unknown.",
+      "input": {
+        "operation": "write",
+        "keyMode": "legacy",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 300,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 500,
+          "code": "unexpected_server_error",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "outcome_unknown",
+        "inProgress": false
+      }
+    },
+    {
+      "name": "legacy_not_sent",
+      "description": "Certainly not sent, so it cannot have run: resent after a backoff.",
+      "input": {
+        "operation": "write",
+        "keyMode": "legacy",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 50,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "not_sent"
+        }
+      },
+      "expected": {
+        "action": "retry",
+        "mode": "resend",
+        "nonce": "same",
+        "delayMs": 500
+      }
+    },
+    {
+      "name": "legacy_429",
+      "description": "A 429 never ran: resent after a backoff.",
+      "input": {
+        "operation": "write",
+        "keyMode": "legacy",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 200,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 429,
+          "code": "request_limit_reached",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "retry",
+        "mode": "resend",
+        "nonce": "same",
+        "delayMs": 500
+      }
+    },
+    {
+      "name": "legacy_429_signature_too_old",
+      "description": "Re-signed when the signature would be too old.",
+      "input": {
+        "operation": "write",
+        "keyMode": "legacy",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 24900,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 429,
+          "code": "request_limit_reached",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "retry",
+        "mode": "resign",
+        "nonce": "same",
+        "delayMs": 500
+      }
+    },
+    {
+      "name": "legacy_429_retry_after",
+      "description": "Retry-After honoured.",
+      "input": {
+        "operation": "write",
+        "keyMode": "legacy",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 100,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.1,
+        "outcome": {
+          "type": "response",
+          "status": 429,
+          "code": "request_limit_reached",
+          "replayed": false,
+          "retryAfterSeconds": 2
+        }
+      },
+      "expected": {
+        "action": "retry",
+        "mode": "resend",
+        "nonce": "same",
+        "delayMs": 2000
+      }
+    },
+    {
+      "name": "legacy_created",
+      "description": "A 2xx is returned.",
+      "input": {
+        "operation": "write",
+        "keyMode": "legacy",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 201,
+          "code": null,
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "return"
+      }
+    },
+    {
+      "name": "legacy_in_progress",
+      "description": "duplicate_api_request_in_progress: unknown, in progress.",
+      "input": {
+        "operation": "write",
+        "keyMode": "legacy",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 409,
+          "code": "duplicate_api_request_in_progress",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "outcome_unknown",
+        "inProgress": true
+      }
+    },
+    {
+      "name": "legacy_address_conflict",
+      "description": "The conflict retry, with its new nonce, does not depend on the key.",
+      "input": {
+        "operation": "write",
+        "keyMode": "legacy",
+        "attempt": 1,
+        "elapsedMs": 0,
+        "signedAgeMs": 0,
+        "sinceFirstSendMs": 0,
+        "resends": 0,
+        "mayHaveRun": false,
+        "conflictRetried": false,
+        "random": 0.5,
+        "outcome": {
+          "type": "response",
+          "status": 409,
+          "code": "address_derivation_conflict",
+          "replayed": false,
+          "retryAfterSeconds": null
+        }
+      },
+      "expected": {
+        "action": "retry",
+        "mode": "resign",
+        "nonce": "new",
+        "delayMs": 0
+      }
+    }
+  ]
+}
