@@ -6,7 +6,7 @@
 #
 # Packagist needs composer.json at a repository's root, so the PHP package lives in its own repository,
 # Vaultody-com/vaultody-sdk-php, which only this script writes to (the release workflow's publish-php job,
-# with the mirror's deploy key). Each release adds one commit whose tree holds the very git objects of php/
+# with a token of the GitHub App vaultody-sdk-release). Each release adds one commit whose tree holds the very git objects of php/
 # here, and one more file: .gitattributes from scripts/release/php-mirror.gitattributes, which keeps
 # GitHub's zip of the tag (what Packagist serves) to the library. Anyone can check a mirror tag against the
 # signed tag of this repository, with both fetched into one clone:
