@@ -109,3 +109,12 @@ what `testpypi` sends only the Python packages to TestPyPI, to try the PyPI side
 | Key-pair request signing live on production | `listApiKeySigningKeys` published: `contract/` refreshed, `contract/pending/` empty | a stable version (the guard refuses one while anything is pending) |
 | Vault xpub fields shown on production | the xpub and derivation fields, with `blockchain`/`network` on the address answers, no longer hidden; then `ADDRESS_PATHS_PUBLIC` set to `true` in all three languages (`generateDepositAddress` then requires the path) | `1.0.0` (the release manager checks that the fields are live; the guard checks the constant) |
 | `1.0.0` | all of the above, production signing responses; the stable release commit sets `DEFAULT_RESPONSE_SIGNATURE` to `required` and `ADDRESS_PATHS_PUBLIC` to `true` in all three languages, together with the root | stable, with `root_fingerprint` = the fingerprint published to clients |
+
+**The release-candidate window.** A release candidate with the root is only as strong as its latch. Whatever strips
+the signature from every response keeps the client from ever latching, and a client whose latch lives in memory
+(`MemoryVaultKeyStore`) starts unlatched in every new process. That is accepted for release candidates only, so the
+window stays short, in this order:
+
+1. production signs every response;
+2. a short window in which release-candidate clients latch;
+3. stable `0.9.0`: `required` by default, strict from the first call (with the other stable conditions above).
