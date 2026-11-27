@@ -151,11 +151,13 @@ $tests['keys: a signing key never shows its private half'] = static function () 
     check(!str_contains(print_r($signer, true), $seed), 'the signer');
 };
 
-$tests['roots: none embedded yet, so a signed response fails closed while an unsigned one needs no root'] = static function (): void {
-    check(EmbeddedRoots::CURRENT === ['pem' => '', 'fingerprint' => ''] && Roots::embedded() === [], 'no embedded roots in this version');
-    thrown(static fn () => Roots::require(null), ConfigurationError::class);
+$tests['roots: the production root is embedded; with no root a signed response fails closed while an unsigned one needs no root'] = static function (): void {
+    $embedded = Roots::embedded();
+    check(count($embedded) === 1 && $embedded[0]->rootId === EmbeddedRoots::CURRENT['fingerprint'] && EmbeddedRoots::NEXT === ['pem' => '', 'fingerprint' => ''], 'the current root only');
+    check(Roots::require(null) === $embedded, 'no roots option: the embedded root');
+    thrown(static fn () => Roots::require([]), ConfigurationError::class);
     $vector = vectors('v1.json')['cases'][0];
-    thrown(static fn () => ResponseVerifier::verify(request_of($vector['verify']['request']), response_of($vector['verify']['response']), ['now' => $vector['verify']['now']]), ConfigurationError::class);
+    thrown(static fn () => ResponseVerifier::verify(request_of($vector['verify']['request']), response_of($vector['verify']['response']), ['now' => $vector['verify']['now'], 'roots' => []]), ConfigurationError::class);
     $unsigned = ResponseVerifier::verify(['method' => 'GET', 'url' => '/x'], ['status' => 200, 'headers' => [], 'body' => '{}'], ['requireResponseSignature' => false]);
     check($unsigned === ['verified' => false, 'reason' => 'missing'], 'unsigned, non-strict');
     check(thrown(static fn () => ResponseVerifier::verify(['method' => 'GET', 'url' => '/x'], ['status' => 200, 'headers' => [], 'body' => '{}']), ResponseSignatureError::class)->reason === 'missing', 'unsigned, strict');

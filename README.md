@@ -10,8 +10,9 @@ request target, network error classification, the vault xpub pin model), the sha
 and the check that every documented API operation has a method. The clients (`Vaultody` in Node.js and PHP,
 `Vaultody` and `AsyncVaultody` in Python) sign, verify, pin vault xpubs, check addresses, retry and page.
 The first release candidate is `0.9.0-rc.1`: `npm install @vaultody-com/sdk@next`, `pip install --pre vaultody-sdk`,
-`composer require "vaultody/sdk:^0.9@RC"`. Until the production root key is embedded, a release candidate accepts
-unsigned responses and marks vault pins unverified (trust on first use); see [docs/RELEASING.md](docs/RELEASING.md).
+`composer require "vaultody/sdk:^0.9@RC"`. It embeds the production response-signing root. Until production signs
+responses, a release candidate accepts unsigned ones and marks vault pins unverified (trust on first use); the first
+signed response latches its origin. See [docs/RELEASING.md](docs/RELEASING.md).
 
 The API methods: one per documented operation of API version `2026-03-20` (32: the 31 published and
 `listApiKeySigningKeys`, still pending in the docs), grouped and named as the API reference groups and names

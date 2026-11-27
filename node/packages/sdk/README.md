@@ -155,7 +155,7 @@ The rules are the same in every language ([`test-vectors/response-mode-v1.json`]
   asks `GET /api-keys/current/signing-keys` once before its first write (with a signer, the key-pair check is that
   read). Against an origin that does not sign, the read is refused and the write is never sent.
 - `responseSignature: 'required'`: every answer must be signed. 1.0 makes this the default (`DEFAULT_RESPONSE_SIGNATURE`).
-- `roots`: the response-signing root keys to trust instead of the embedded ones, which are empty until the production root exists. A signed answer with no root to check it fails closed (`ConfigurationError` `no_root_keys`), and latches the origin.
+- `roots`: the response-signing root keys to trust instead of the embedded production root (another environment's root, say). A signed answer with no root to check it fails closed (`ConfigurationError` `no_root_keys`), and latches the origin.
 
 ### Vault xpub pins and addresses
 
@@ -280,7 +280,7 @@ in this directory does the same.
   https: the request carries the passphrase, so plain http is refused (exit 2) except to localhost, for a
   port-forward. `--api-version` sets the `x-api-version` sent and signed with the request; the default is
   `2026-03-20`, the version the endpoint was introduced in. `--response-root-key <root.pem>` (repeatable) trusts
-  that environment's response-signing root instead of the embedded ones, which are not filled in yet.
+  that environment's response-signing root instead of the embedded production root.
 - Without `--allow-unsigned`, `verify` exits 0 only when the response is signed, its signature verifies and
   the key is listed and active. An unsigned response proves nothing: whatever removed the signature could
   also have put your own fingerprint into the list. It exits 4 and prints what the unverified answer said.

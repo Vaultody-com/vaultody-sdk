@@ -170,7 +170,7 @@ function resolveRoots(roots) {
 
 /**
  * The fingerprints (root ids) of the roots embedded in this build, to compare with the ones Vaultody
- * published. Empty until the production root exists: then a signed response needs the `roots` option.
+ * published: the production root, and the next one during a rotation.
  *
  * @returns {ReadonlyArray<string>}
  */

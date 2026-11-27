@@ -8,9 +8,10 @@ GitHub release ([docs/RELEASING.md](docs/RELEASING.md)).
 
 ## 0.9.0-rc.1
 
-The first release candidate. The production root key is not embedded yet: responses without a signature are
-accepted (`when-present`) and vault pins are marked unverified (trust on first use) until a release candidate
-embeds it.
+The first release candidate. It embeds the production response-signing root (`0194e94f295844b04dbdfb885338fb4242095e55479a01a03caafee3e36cdd76`).
+Production does not sign responses yet, so a response without a signature is accepted (`when-present`) and vault
+pins are marked unverified (trust on first use). The first signed response latches its origin: from then on every
+response from it must be signed and verify against that root.
 
 - The SDKs for Node.js (`@vaultody-com/sdk`, `@vaultody-com/verify`), Python (`vaultody-sdk`, `vaultody-verify`) and
   PHP (`vaultody/sdk`), for API version `2026-03-20`, under the Apache License 2.0.
