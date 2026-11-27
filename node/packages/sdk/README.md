@@ -285,8 +285,9 @@ in this directory does the same.
   the key is listed and active. An unsigned response proves nothing: whatever removed the signature could
   also have put your own fingerprint into the list. It exits 4 and prints what the unverified answer said.
 - `--allow-unsigned` is for as long as Vaultody does not sign responses yet: an unsigned response then
-  gives the usual 0 or 1, with a warning. It is ignored when response-signing root keys are configured
-  (embedded, or `--response-root-key`): then an unsigned response always exits 4.
+  gives the usual 0 or 1, with a warning. It is ignored with `--response-root-key`, or in a stable version (the
+  root is built in): then an unsigned response always exits 4. A release candidate checks a signed response
+  against the built-in root and still takes `--allow-unsigned`, as the client does (`when-present`).
 - Exit codes:
 
   | Code | Meaning |
@@ -322,8 +323,8 @@ npx @vaultody-com/sdk@next vault-keys accept --vault-id <vaultId> [--file vault-
   else `~/.vaultody/vault-keys.json`; the file Python and PHP share) and records the change in the file's audit list.
   The new pin is `verified` when the vault list was signed.
 - An unsigned list exits 4, unless `--allow-unsigned` is given while Vaultody does not sign responses yet (the new pin is
-  then `unverified`). `--allow-unsigned` is ignored once root keys are configured or the pin file has seen a signed
-  answer from that API.
+  then `unverified`). `--allow-unsigned` is ignored with `--response-root-key`, in a stable version, or once the pin
+  file has seen a signed answer from that API.
 - `--key` signs the requests with the private key registered on the API key, when it has one; `--root` and
   `--response-root-key` work as for `keys verify`.
 - Exit codes: 0 re-pinned, or the pin already matches; 1 not re-pinned (no `--yes`, the API shows other keys than
