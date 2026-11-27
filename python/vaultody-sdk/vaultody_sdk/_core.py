@@ -755,7 +755,7 @@ class Core:
             # no response_verification_failed; the origin signs all the same, so it latches.
             if signed_answer:
                 yield from self._set_latch(None)
-            raise ConfigurationError(str(failure), "no_roots") from None
+            raise ConfigurationError(str(failure), "no_root_keys") from None
 
         if verification.verified:
             yield from self._set_latch(verification.root_id)

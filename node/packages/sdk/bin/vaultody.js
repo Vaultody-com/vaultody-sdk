@@ -25,7 +25,7 @@ const util = require('node:util');
 const keys = require('@vaultody-com/verify/keys');
 const { parseRoots, embeddedFingerprints, ConfigurationError: RootKeyError } = require('@vaultody-com/verify/response');
 const { Vaultody } = require('../src/client');
-const { MODES, carriesSignature } = require('../src/responseVerification');
+const { MODES, carriesSignature, readResponseSignatureConfig } = require('../src/responseVerification');
 const { MemoryVaultKeyStore, FileVaultKeyStore, defaultVaultKeysFile } = require('../src/vaultKeyStore');
 const { ALGORITHMS: PIN_ALGORITHMS, xpubHash } = require('../src/vaultKeys');
 const { keyObjectSigner } = require('../src/signer');
@@ -63,8 +63,17 @@ const EXIT_CODES_HELP = 'Exit codes: 0 ok, 1 refused or not registered, 2 usage 
 
 const UNSIGNED_VERDICT = 'the response was not signed, so the answer could not be verified.';
 
-// Response-signing root keys built into this package. Once there are any, every response must be signed.
+// Response-signing root keys built into this package.
 const HAS_EMBEDDED_ROOTS = embeddedFingerprints().length > 0;
+
+/**
+ * Whether every response must be signed, by the client's rule: --response-root-key is given, or this is a stable
+ * version with built-in roots. A release candidate with built-in roots checks a signed answer against them but
+ * still takes an unsigned one with --allow-unsigned, for as long as Vaultody does not sign responses yet.
+ */
+const rootsConfigured = roots => readResponseSignatureConfig({
+    env: {}, rootsOption: roots !== undefined, embeddedRoots: HAS_EMBEDDED_ROOTS, version,
+}).rootsConfigured;
 
 const MAIN_USAGE = `Usage: vaultody keys <command> [options]
        vaultody vault-keys accept [options]
@@ -162,8 +171,8 @@ removed the signature could also have changed the answer.
   --response-root-key   a response-signing root public key (PEM) to trust instead of the built-in ones,
                         for test environments; may be given more than once
   --allow-unsigned      accept an unsigned response with a warning (exit 0 or 1 instead of 4), for as long as
-                        Vaultody does not sign responses yet. Ignored when response-signing root keys are
-                        configured (built in or --response-root-key): then the response must be signed.
+                        Vaultody does not sign responses yet. Ignored with --response-root-key, or in a stable
+                        version (built-in roots): then the response must be signed.
 
 ${CREDENTIALS_FROM_ENV}
 ${EXIT_CODES_HELP}
@@ -207,9 +216,9 @@ shows exactly the type and fingerprints given in --expect, the ones you confirme
   --response-root-key   a response-signing root public key (PEM) to trust instead of the built-in ones, for test
                         environments; may be given more than once
   --allow-unsigned      accept an unsigned vault list, for as long as Vaultody does not sign responses yet; the new
-                        pin is then unverified until a signed answer confirms it. Ignored when response-signing root
-                        keys are configured, or the pin file has seen a signed answer from this API: then the answer
-                        must be signed.
+                        pin is then unverified until a signed answer confirms it. Ignored with --response-root-key,
+                        in a stable version (built-in roots), or once the pin file has seen a signed answer from this
+                        API: then the answer must be signed.
   --yes                 replace the pin; without it nothing is written. Needs --expect
   --expect              the type and fingerprints the new pin must have, as the run without --yes prints them:
                         type=main,ECDSA=<16 hex>,EDDSA=- (- for an algorithm the vault has no key for)
@@ -595,12 +604,12 @@ async function runVerify(values, io) {
     }
     const roots = values['response-root-key'] && values['response-root-key'].length > 0 ? readRootKeys(values['response-root-key']) : undefined;
     // With root keys configured a response is expected to be signed, so an unsigned one is never accepted.
-    const rootsConfigured = roots !== undefined || HAS_EMBEDDED_ROOTS;
-    const allowUnsigned = values['allow-unsigned'] === true && !rootsConfigured;
+    const strict = rootsConfigured(roots);
+    const allowUnsigned = values['allow-unsigned'] === true && !strict;
     const key = readKeyArgument(values.key, 'private');
     const credentials = readCredentials(io.env);
     io.redact.push(credentials.apiKey, credentials.apiSecret, credentials.passphrase);
-    if (values['allow-unsigned'] === true && rootsConfigured) {
+    if (values['allow-unsigned'] === true && strict) {
         io.stderr(`vaultody: warning: --allow-unsigned is ignored: ${roots !== undefined ? '--response-root-key is given' : 'this build has response-signing root keys'}, `
             + 'so the response must be signed.\n');
     }
@@ -613,7 +622,7 @@ async function runVerify(values, io) {
             io.stderr(`vaultody: ${UNSIGNED_VERDICT}\n`
                 + `Either ${url.origin} does not sign responses yet, or something between you and Vaultody removed the signature `
                 + 'and could have changed the answer too. Do not rely on it.\n'
-                + `${rootsConfigured ? '' : 'While Vaultody does not sign responses yet, --allow-unsigned accepts an unsigned answer with a warning.\n'}`
+                + `${strict ? '' : 'While Vaultody does not sign responses yet, --allow-unsigned accepts an unsigned answer with a warning.\n'}`
                 + `Unverified answer: ${describeOutcome(result, key)}${requestId}`);
 
             return EXIT.UNSIGNED;
@@ -825,8 +834,8 @@ async function runAccept(values, io) {
     }
     // A signed answer is required once roots are configured, or once this pin file saw a signed answer from this API.
     const latched = (await store.getResponseSignatureLatch(origin)) !== null;
-    const rootsConfigured = roots !== undefined || HAS_EMBEDDED_ROOTS;
-    const allowUnsigned = values['allow-unsigned'] === true && !rootsConfigured && !latched;
+    const strict = rootsConfigured(roots);
+    const allowUnsigned = values['allow-unsigned'] === true && !strict && !latched;
     if (values['allow-unsigned'] === true && !allowUnsigned) {
         io.stderr(`vaultody: warning: --allow-unsigned is ignored: ${latched ? `${file} has seen a signed answer from ${origin}` : 'response-signing root keys are configured'}, `
             + 'so the response must be signed.\n');
@@ -869,7 +878,7 @@ async function runAccept(values, io) {
         io.stderr(`vaultody: ${UNSIGNED_VERDICT}\n`
             + `Either ${origin} does not sign responses yet, or something between you and Vaultody removed the signature `
             + 'and could have changed the answer too. Nothing was changed.\n'
-            + `${rootsConfigured || latched ? '' : 'While Vaultody does not sign responses yet, --allow-unsigned accepts an unsigned answer.\n'}`
+            + `${strict || latched ? '' : 'While Vaultody does not sign responses yet, --allow-unsigned accepts an unsigned answer.\n'}`
             + `Unverified answer:\n${table}`);
 
         return EXIT.UNSIGNED;

@@ -131,8 +131,9 @@ The same fingerprint is sent to clients by email, outside the CDN. You can check
 `openssl pkey -pubin -in root.pem -outform DER | openssl dgst -sha256`. When the package loads, it
 recomputes every fingerprint and refuses to load if one differs.
 
-**The production roots are not filled in yet.** Until a release embeds them, verifying a signed
-response throws a `ConfigurationError`, never a pass. Pass `roots` explicitly in the meantime.
+`current` holds the production root, fingerprint `0194e94f295844b04dbdfb885338fb4242095e55479a01a03caafee3e36cdd76`; `next` is empty until a
+rotation. To verify responses from another environment, pass its root in `roots`. A `roots` list with no key
+throws a `ConfigurationError` on a signed response, never a pass.
 
 A rotation works like this:
 
@@ -176,7 +177,7 @@ signs the challenge the dashboard shows when you register a key (`signChallengeP
 (below). It does no network I/O.
 
 The `vaultody keys` command line (`generate`, `fingerprint`, `prove`, `verify`) is built on it and ships with
-[`@vaultody-com/sdk`](../sdk/README.md#command-line-request-signing-keys): `npx @vaultody-com/sdk keys ...`. Its
+[`@vaultody-com/sdk`](../sdk/README.md#command-line-request-signing-keys): `npx @vaultody-com/sdk@next keys ...`. Its
 `keys verify` asks the API through the SDK's client.
 
 ## Signing requests

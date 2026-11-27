@@ -93,8 +93,8 @@ describe('test-vectors/response-mode-v1.json: one answer', () => {
             const verifier = new ResponseVerifier({
                 origin: ORIGIN,
                 mode: c.mode,
-                // Without roots the build's embedded ones are used: none in this repository.
-                roots: c.roots ? vector.verify.pinnedRoots.map(rootPem) : undefined,
+                // Without roots: a build that embeds none (an empty list, not this build's production root).
+                roots: c.roots ? vector.verify.pinnedRoots.map(rootPem) : [],
                 store,
                 securityEvent: event => events.push(event),
                 warn: () => {},

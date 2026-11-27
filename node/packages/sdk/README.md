@@ -28,8 +28,8 @@ for await (const vault of vaultody.vaults.listVaults({ networkType: 'main' })) {
 In an ES module, `import { Vaultody, fileSigner } from '@vaultody-com/sdk'`: every export (the client, every error class,
 the stores, the signers, the webhook helpers) is also a named ESM export.
 
-The package also ships the `vaultody` command line for request-signing keys (`npx @vaultody-com/sdk keys ...`) and for
-re-pinning a vault (`npx @vaultody-com/sdk vault-keys accept ...`)
+The package also ships the `vaultody` command line for request-signing keys (`npx @vaultody-com/sdk@next keys ...`) and for
+re-pinning a vault (`npx @vaultody-com/sdk@next vault-keys accept ...`)
 ([below](#request-signing-keys)).
 
 ## API methods
@@ -155,7 +155,7 @@ The rules are the same in every language ([`test-vectors/response-mode-v1.json`]
   asks `GET /api-keys/current/signing-keys` once before its first write (with a signer, the key-pair check is that
   read). Against an origin that does not sign, the read is refused and the write is never sent.
 - `responseSignature: 'required'`: every answer must be signed. 1.0 makes this the default (`DEFAULT_RESPONSE_SIGNATURE`).
-- `roots`: the response-signing root keys to trust instead of the embedded ones, which are empty until the production root exists. A signed answer with no root to check it fails closed (`ConfigurationError` `no_root_keys`), and latches the origin.
+- `roots`: the response-signing root keys to trust instead of the embedded production root (another environment's root, say). A signed answer with no root to check it fails closed (`ConfigurationError` `no_root_keys`), and latches the origin.
 
 ### Vault xpub pins and addresses
 
@@ -168,7 +168,7 @@ The rules are the same in every language ([`test-vectors/response-mode-v1.json`]
   - `onSecurityEvent({ type: 'vault_key_changed', origin, alarms })` is called first.
   - Then `VaultKeyChangedError` is thrown. The pin is not touched and nothing is returned.
   - Alarms carry short hashes (the first 16 hex characters of the SHA-256 of each xpub), never an xpub.
-  - Nothing re-pins by itself. When the change is legitimate (confirm it with Vaultody first), re-pin the vault: `npx @vaultody-com/sdk vault-keys accept --vault-id <vaultId>` shows the pinned and the new fingerprints and replaces the pin with `--yes --expect <fingerprints>` (below), or call `store.replace()` on a custom store. A configured pin is changed in your configuration.
+  - Nothing re-pins by itself. When the change is legitimate (confirm it with Vaultody first), re-pin the vault: `npx @vaultody-com/sdk@next vault-keys accept --vault-id <vaultId>` shows the pinned and the new fingerprints and replaces the pin with `--yes --expect <fingerprints>` (below), or call `store.replace()` on a custom store. A configured pin is changed in your configuration.
 - **Per-vault results.** Every `listVaults` page has `meta.vaultKeys`: one `{ vaultId, status, outcome }` per vault, in answer order. `status` is the vault's pin after the answer (`verified`, `unverified`) or `not_verifiable` (no MPC keys); `outcome` is `pinned`, `unchanged`, `upgraded` or `not_verifiable`. Python (`meta.vault_keys`) and PHP (`meta->vaultKeys`) report the same.
 - **Which addresses are checked.** On `generateDepositAddress`, `listAddressesByVaultAccountId` and `addAssetToVaultAccount`.
   - An address with its path (`accountIndex`, `isChange`, `addressIndex`) must derive from the pinned xpub (`@vaultody-com/verify/address`). Otherwise the whole answer is refused with `AddressVerificationError`.
@@ -261,7 +261,8 @@ The API secret, passphrase and API key never appear in `util.inspect`, JSON or a
 An API key can hold up to two public keys of your own. Once it holds one, every request made with it must also be
 signed with the matching private key (`x-api-keypair-sign`). The `vaultody keys` command makes those keys, prints
 their fingerprint, signs the challenge the dashboard shows when you register a key, and checks that a key is
-registered. It ships with this package: `npx @vaultody-com/sdk keys ...` (always the scoped name: an unscoped
+registered. It ships with this package: `npx @vaultody-com/sdk@next keys ...` (`@next` while the SDK is a release
+candidate: a bare `npx @vaultody-com/sdk` takes npm's `latest` tag; always the scoped name: an unscoped
 `npx vaultody` would run whatever is published under that name). From a checkout, `node bin/vaultody.js keys ...`
 in this directory does the same.
 
@@ -279,13 +280,14 @@ in this directory does the same.
   https: the request carries the passphrase, so plain http is refused (exit 2) except to localhost, for a
   port-forward. `--api-version` sets the `x-api-version` sent and signed with the request; the default is
   `2026-03-20`, the version the endpoint was introduced in. `--response-root-key <root.pem>` (repeatable) trusts
-  that environment's response-signing root instead of the embedded ones, which are not filled in yet.
+  that environment's response-signing root instead of the embedded production root.
 - Without `--allow-unsigned`, `verify` exits 0 only when the response is signed, its signature verifies and
   the key is listed and active. An unsigned response proves nothing: whatever removed the signature could
   also have put your own fingerprint into the list. It exits 4 and prints what the unverified answer said.
 - `--allow-unsigned` is for as long as Vaultody does not sign responses yet: an unsigned response then
-  gives the usual 0 or 1, with a warning. It is ignored when response-signing root keys are configured
-  (embedded, or `--response-root-key`): then an unsigned response always exits 4.
+  gives the usual 0 or 1, with a warning. It is ignored with `--response-root-key`, or in a stable version (the
+  root is built in): then an unsigned response always exits 4. A release candidate checks a signed response
+  against the built-in root and still takes `--allow-unsigned`, as the client does (`when-present`).
 - Exit codes:
 
   | Code | Meaning |
@@ -306,7 +308,7 @@ The SDKs refuse a vault whose xpub changed, that gained a key, or whose type cha
 you re-pin it. Confirm the change with Vaultody first, then:
 
 ```
-npx @vaultody-com/sdk vault-keys accept --vault-id <vaultId> [--file vault-keys.json] [--root <url>] [--key private.pem]
+npx @vaultody-com/sdk@next vault-keys accept --vault-id <vaultId> [--file vault-keys.json] [--root <url>] [--key private.pem]
                                    [--yes --expect type=<main|test>,ECDSA=<fingerprint|->,EDDSA=<fingerprint|->]
 ```
 
@@ -321,8 +323,8 @@ npx @vaultody-com/sdk vault-keys accept --vault-id <vaultId> [--file vault-keys.
   else `~/.vaultody/vault-keys.json`; the file Python and PHP share) and records the change in the file's audit list.
   The new pin is `verified` when the vault list was signed.
 - An unsigned list exits 4, unless `--allow-unsigned` is given while Vaultody does not sign responses yet (the new pin is
-  then `unverified`). `--allow-unsigned` is ignored once root keys are configured or the pin file has seen a signed
-  answer from that API.
+  then `unverified`). `--allow-unsigned` is ignored with `--response-root-key`, in a stable version, or once the pin
+  file has seen a signed answer from that API.
 - `--key` signs the requests with the private key registered on the API key, when it has one; `--root` and
   `--response-root-key` work as for `keys verify`.
 - Exit codes: 0 re-pinned, or the pin already matches; 1 not re-pinned (no `--yes`, the API shows other keys than

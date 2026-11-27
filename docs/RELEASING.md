@@ -12,8 +12,9 @@ Every package is released together, at the one version in [`VERSION`](../VERSION
 The manual [`release`](../.github/workflows/release.yml) workflow does all of it, on a signed tag. Nothing is
 published from a laptop, except each npm package's very first version ([below](#the-first-publish)).
 
-**Release candidates only (`X.Y.Z-rc.N`, starting at `0.9.0-rc.1`) until the production root key exists.**
-The workflow refuses a stable version while no production root is embedded ([order](#order-with-the-server-side-work)).
+**Release candidates only (`X.Y.Z-rc.N`, starting at `0.9.0-rc.1`) until the [order](#order-with-the-server-side-work)
+below is done.** The production root is embedded since `0.9.0-rc.1`; the workflow refuses a stable version while no
+production root is embedded.
 
 ## Steps
 
@@ -103,8 +104,17 @@ what `testpypi` sends only the Python packages to TestPyPI, to try the PyPI side
 
 | Step | Needs | What can be released |
 |---|---|---|
-| Now | the registries, the trusted publishers and the release environments | `0.9.0-rc.N` with empty root slots: clients accept unsigned responses (`when-present`) and mark vault pins unverified (trust on first use) |
-| Production root key (response signing) | the root's PEM and fingerprint in all three languages, in one pull request | a release candidate that embeds it, published **before** production starts signing responses, with time for clients to upgrade: a version with empty slots fails closed on every signed response. A release candidate with the root stays `when-present` (it bridges: unsigned answers until the first signed one, which latches the origin); a stable version with it is strict at once |
+| Registries | the registries, the trusted publishers and the release environments | a release candidate |
+| Production root key (response signing): **done**, `root-prod` embedded since `0.9.0-rc.1` | the root's PEM and fingerprint in all three languages, in one pull request | a release candidate that embeds it, published **before** production starts signing responses, with time for clients to upgrade: a version with empty slots fails closed on every signed response. A release candidate with the root stays `when-present` (it bridges: unsigned answers until the first signed one, which latches the origin); a stable version with it is strict at once |
 | Key-pair request signing live on production | `listApiKeySigningKeys` published: `contract/` refreshed, `contract/pending/` empty | a stable version (the guard refuses one while anything is pending) |
 | Vault xpub fields shown on production | the xpub and derivation fields, with `blockchain`/`network` on the address answers, no longer hidden; then `ADDRESS_PATHS_PUBLIC` set to `true` in all three languages (`generateDepositAddress` then requires the path) | `1.0.0` (the release manager checks that the fields are live; the guard checks the constant) |
 | `1.0.0` | all of the above, production signing responses; the stable release commit sets `DEFAULT_RESPONSE_SIGNATURE` to `required` and `ADDRESS_PATHS_PUBLIC` to `true` in all three languages, together with the root | stable, with `root_fingerprint` = the fingerprint published to clients |
+
+**The release-candidate window.** A release candidate with the root is only as strong as its latch. Whatever strips
+the signature from every response keeps the client from ever latching, and a client whose latch lives in memory
+(`MemoryVaultKeyStore`) starts unlatched in every new process. That is accepted for release candidates only, so the
+window stays short, in this order:
+
+1. production signs every response;
+2. a short window in which release-candidate clients latch;
+3. stable `0.9.0`: `required` by default, strict from the first call (with the other stable conditions above).

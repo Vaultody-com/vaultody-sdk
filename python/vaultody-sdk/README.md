@@ -140,7 +140,7 @@ that both clients drive. So both behave the same, by construction.
 4. **Response verification** (vaultody-verify), before the body is read (`test-vectors/response-mode-v1.json`).
    A signed response (any of the four `x-api-response-*` headers) is always checked; a failure raises
    `ResponseVerificationError` and is never retried, and a signed response with no root to check it with
-   raises `ConfigurationError` `no_roots`. An unsigned response passes (`response_signature="when-present"`,
+   raises `ConfigurationError` `no_root_keys`. An unsigned response passes (`response_signature="when-present"`,
    the build default of release candidates, while production does not sign) until the origin has sent one
    signed response, verified or not: that answer latches the origin before anything is raised (the security
    event `response_signature_latched`, `rootId` `None` when it did not verify), and from then on the client
@@ -173,8 +173,9 @@ that both clients drive. So both behave the same, by construction.
    algorithm added to a pinned vault and a vault type change raise `VaultKeyChangedError` (the alarm; the
    security hook first, no pin changed, nothing returned). The last two are refused on purpose too: after
    you confirm a legitimate change with Vaultody, re-pin the vault with
-   `npx @vaultody-com/sdk vault-keys accept --vault-id <id> --yes` (the Node command line, which edits the pin
-   file every SDK shares; it shows the old and new fingerprints first) or `store.replace()`. Nothing else
+   `npx @vaultody-com/sdk@next vault-keys accept --vault-id <id>` (the Node command line, which edits the pin file
+   every SDK shares: it shows the old and new fingerprints, and `--yes --expect type=…,ECDSA=…,EDDSA=…` re-pins
+   only when the API still shows exactly those) or `store.replace()`. Nothing else
    changes a pin. Pins you give in `pinned_vault_keys` count as `verified`, are compared with every vault
    list (signed or not) like any pin, so any difference is the alarm, are never written to the store, and
    take the place of the stored pin of their vault. Addresses

@@ -47,7 +47,7 @@ read and write exactly this layout, so one file can be shared by clients in diff
 | pin `type` | `main` or `test` |
 | pin `keys` | `{ ECDSA, EDDSA }`: the xpub as first seen in `GET /vaults/{main\|test}`, or `null`; at least one xpub |
 | pin `status` | `verified` (a signed answer showed these xpubs: `verifiedAt` and `verification: { rootId, timestamp }` set) or `unverified` (trust on first use from an unsigned answer: both `null`) |
-| `audit` | `{ vaultId, at, reason, removed }` for every explicit replacement or removal of a pin (administrative only, such as `npx @vaultody-com/sdk vault-keys accept`; the transport never writes one) |
+| `audit` | `{ vaultId, at, reason, removed }` for every explicit replacement or removal of a pin (administrative only, such as `npx @vaultody-com/sdk@next vault-keys accept`; the transport never writes one) |
 
 Times are Unix seconds, JSON integers (no fraction, no exponent, at most 2^53 − 1). Every field is required
 and no other field is allowed, at any level.
@@ -57,7 +57,7 @@ written here. They count as verified and take the place of this file's pin of th
 
 A pin changes only by an explicit replacement after the client confirmed the change with Vaultody: an xpub that
 changed or is gone, a key the vault did not have, or a vault type change all stay refused until then.
-`npx @vaultody-com/sdk vault-keys accept --vault-id <vaultId>` shows the pinned and the new fingerprints, and with
+`npx @vaultody-com/sdk@next vault-keys accept --vault-id <vaultId>` shows the pinned and the new fingerprints, and with
 `--yes --expect <the type and fingerprints it showed>` replaces the pin, when the API still shows exactly those, and
 appends an `audit` entry.
 
