@@ -143,7 +143,7 @@ function parseRoots(roots) {
 function requireRoots(parsed) {
     if (parsed === null) {
         if (EMBEDDED.length === 0) {
-            throw new ConfigurationError('no root keys are configured: this build of @vaultody/verify has no embedded '
+            throw new ConfigurationError('no root keys are configured: this build of @vaultody-com/verify has no embedded '
                 + 'production roots yet, so pass them in the `roots` option. Refusing to treat any response as verified.');
         }
 
@@ -170,7 +170,7 @@ function resolveRoots(roots) {
 
 /**
  * The fingerprints (root ids) of the roots embedded in this build, to compare with the ones Vaultody
- * published. Empty until the production root exists: then a signed response needs the `roots` option.
+ * published: the production root, and the next one during a rotation.
  *
  * @returns {ReadonlyArray<string>}
  */

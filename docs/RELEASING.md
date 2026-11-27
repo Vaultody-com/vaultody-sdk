@@ -4,7 +4,7 @@ Every package is released together, at the one version in [`VERSION`](../VERSION
 
 | Registry | Package | How |
 |---|---|---|
-| npm | `@vaultody/verify`, then `@vaultody/sdk` | trusted publishing (OIDC) with provenance; dist-tag `next` for a release candidate |
+| npm | `@vaultody-com/verify`, then `@vaultody-com/sdk` | trusted publishing (OIDC) with provenance; dist-tag `next` for a release candidate |
 | PyPI | `vaultody-verify`, then `vaultody-sdk` | trusted publishing (OIDC) with PEP 740 attestations |
 | Packagist | `vaultody/sdk` | `php/` and the tag pushed to the read-only mirror `Vaultody-com/vaultody-sdk-php`; Packagist reads the tag |
 | GitHub | release `v<version>` | every package, `SHA256SUMS`, the build provenance attestation; notes from [`CHANGELOG.md`](../CHANGELOG.md) |
@@ -12,8 +12,9 @@ Every package is released together, at the one version in [`VERSION`](../VERSION
 The manual [`release`](../.github/workflows/release.yml) workflow does all of it, on a signed tag. Nothing is
 published from a laptop, except each npm package's very first version ([below](#the-first-publish)).
 
-**Release candidates only (`X.Y.Z-rc.N`, starting at `0.9.0-rc.1`) until the production root key exists.**
-The workflow refuses a stable version while no production root is embedded ([order](#order-with-the-server-side-work)).
+**Release candidates only (`X.Y.Z-rc.N`, starting at `0.9.0-rc.1`) until the [order](#order-with-the-server-side-work)
+below is done.** The production root is embedded since `0.9.0-rc.1`; the workflow refuses a stable version while no
+production root is embedded.
 
 ## Steps
 
@@ -42,7 +43,7 @@ The workflow refuses a stable version while no production root is embedded ([ord
    ```
 
 4. **Approve** each environment when the run waits on it: `npm-release`, `pypi-release`, `packagist-release`.
-5. **Check:** `npm view @vaultody/sdk dist-tags`, `pip download --no-deps vaultody-sdk==0.9.0rc1`,
+5. **Check:** `npm view @vaultody-com/sdk dist-tags`, `pip download --no-deps vaultody-sdk==0.9.0rc1`,
    `composer show --all vaultody/sdk`, the GitHub release, and
    `gh attestation verify <a downloaded file> --repo Vaultody-com/vaultody-sdk`.
 
@@ -88,9 +89,9 @@ npm has no pending publisher: a package must exist before its trusted publisher 
 npm package:
 
 1. Run the workflow with what `build-only`. Download the run's `release` artifact, then
-   `sha256sum --check SHA256SUMS` and `gh attestation verify npm/vaultody-verify-0.9.0-rc.1.tgz --repo Vaultody-com/vaultody-sdk`.
+   `sha256sum --check SHA256SUMS` and `gh attestation verify npm/vaultody-com-verify-0.9.0-rc.1.tgz --repo Vaultody-com/vaultody-sdk`.
 2. A registry owner publishes both tarballs by hand, with 2FA:
-   `npm publish vaultody-verify-0.9.0-rc.1.tgz --access public --tag next`, then the same for `vaultody-sdk`.
+   `npm publish vaultody-com-verify-0.9.0-rc.1.tgz --access public --tag next`, then the same for `vaultody-com-sdk-0.9.0-rc.1.tgz`.
    These two versions have no provenance.
 3. An organisation admin adds the trusted publisher to each package and sets "Require 2FA and disallow tokens".
 4. Run the workflow again on the same tag with what `all`, the same day: npm skips the two versions when it
@@ -103,8 +104,17 @@ what `testpypi` sends only the Python packages to TestPyPI, to try the PyPI side
 
 | Step | Needs | What can be released |
 |---|---|---|
-| Now | the registries, the trusted publishers and the release environments | `0.9.0-rc.N` with empty root slots: clients accept unsigned responses (`when-present`) and mark vault pins unverified (trust on first use) |
-| Production root key (response signing) | the root's PEM and fingerprint in all three languages, in one pull request | a release candidate that embeds it, published **before** production starts signing responses, with time for clients to upgrade: a version with empty slots fails closed on every signed response. A release candidate with the root stays `when-present` (it bridges: unsigned answers until the first signed one, which latches the origin); a stable version with it is strict at once |
+| Registries | the registries, the trusted publishers and the release environments | a release candidate |
+| Production root key (response signing): **done**, `root-prod` embedded since `0.9.0-rc.1` | the root's PEM and fingerprint in all three languages, in one pull request | a release candidate that embeds it, published **before** production starts signing responses, with time for clients to upgrade: a version with empty slots fails closed on every signed response. A release candidate with the root stays `when-present` (it bridges: unsigned answers until the first signed one, which latches the origin); a stable version with it is strict at once |
 | Key-pair request signing live on production | `listApiKeySigningKeys` published: `contract/` refreshed, `contract/pending/` empty | a stable version (the guard refuses one while anything is pending) |
 | Vault xpub fields shown on production | the xpub and derivation fields, with `blockchain`/`network` on the address answers, no longer hidden; then `ADDRESS_PATHS_PUBLIC` set to `true` in all three languages (`generateDepositAddress` then requires the path) | `1.0.0` (the release manager checks that the fields are live; the guard checks the constant) |
 | `1.0.0` | all of the above, production signing responses; the stable release commit sets `DEFAULT_RESPONSE_SIGNATURE` to `required` and `ADDRESS_PATHS_PUBLIC` to `true` in all three languages, together with the root | stable, with `root_fingerprint` = the fingerprint published to clients |
+
+**The release-candidate window.** A release candidate with the root is only as strong as its latch. Whatever strips
+the signature from every response keeps the client from ever latching, and a client whose latch lives in memory
+(`MemoryVaultKeyStore`) starts unlatched in every new process. That is accepted for release candidates only, so the
+window stays short, in this order:
+
+1. production signs every response;
+2. a short window in which release-candidate clients latch;
+3. stable `0.9.0`: `required` by default, strict from the first call (with the other stable conditions above).

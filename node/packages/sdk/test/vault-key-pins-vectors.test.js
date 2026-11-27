@@ -1,6 +1,6 @@
 'use strict';
 
-// test-vectors/vault-key-pins-v1.json: signed and unsigned vault lists, verified with @vaultody/verify, and
+// test-vectors/vault-key-pins-v1.json: signed and unsigned vault lists, verified with @vaultody-com/verify, and
 // what they do to the vault xpub pins. A case's configured pins (pinnedVaultKeys) take the place of the stored pin
 // of their vault; the pins after each step are the store's alone.
 
@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const { describe, it } = require('node:test');
 
-const { verifyResponse, ResponseSignatureError } = require('@vaultody/verify');
+const { verifyResponse, ResponseSignatureError } = require('@vaultody-com/verify');
 const vaultKeys = require('../src/vaultKeys');
 const { VaultKeyChangedError, AddressVerificationError } = require('../src/errors');
 const { load } = require('./vectors');

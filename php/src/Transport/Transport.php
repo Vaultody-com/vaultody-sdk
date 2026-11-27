@@ -970,7 +970,7 @@ final class Transport
         }
         if ($failure !== null) {
             // A setup error (no root keys to check a signed answer with), not a refused answer: no event.
-            throw new ConfigurationError($failure->getMessage(), 0, $failure);
+            throw ConfigurationError::noRootKeys($failure->getMessage(), $failure);
         }
 
         if (!$verdict['verified'] && !$this->unsignedReported) {

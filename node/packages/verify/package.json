@@ -1,8 +1,7 @@
 {
-  "name": "@vaultody/verify",
-  "version": "0.1.0",
-  "private": true,
-  "description": "Verify that Vaultody API responses and webhook deliveries came unchanged from Vaultody, sign API requests, and make and read request-signing key pairs. No network or storage; the vaultody command line ships with @vaultody/sdk.",
+  "name": "@vaultody-com/verify",
+  "version": "0.9.0-rc.1",
+  "description": "Verify that Vaultody API responses and webhook deliveries came unchanged from Vaultody, sign API requests, and make and read request-signing key pairs. No network or storage; the vaultody command line ships with @vaultody-com/sdk.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",

@@ -199,8 +199,8 @@ describe('options', () => {
 
 describe('package entry points', () => {
     it('exports the response API from the package root and from ./response', () => {
-        const root = require('@vaultody/verify');
-        const response = require('@vaultody/verify/response');
+        const root = require('@vaultody-com/verify');
+        const response = require('@vaultody-com/verify/response');
         for (const name of ['verifyResponse', 'verifyFetchResponse', 'ResponseSignatureError', 'ConfigurationError', 'REASONS']) {
             assert.ok(root[name], name);
             assert.equal(root[name], response[name], name);
@@ -209,12 +209,12 @@ describe('package entry points', () => {
     });
 
     it('does not expose internal files', () => {
-        assert.throws(() => require('@vaultody/verify/src/roots.js'), { code: 'ERR_PACKAGE_PATH_NOT_EXPORTED' });
+        assert.throws(() => require('@vaultody-com/verify/src/roots.js'), { code: 'ERR_PACKAGE_PATH_NOT_EXPORTED' });
     });
 
-    it('is private and has no runtime dependencies', () => {
-        const manifest = require('@vaultody/verify/package.json');
-        assert.equal(manifest.private, true);
+    it('is publishable and has no runtime dependencies', () => {
+        const manifest = require('@vaultody-com/verify/package.json');
+        assert.equal(manifest.private, undefined);
         assert.equal(manifest.dependencies, undefined);
         assert.equal(manifest.engines.node, '>=22');
     });

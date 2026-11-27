@@ -8,9 +8,8 @@ namespace Vaultody\Sdk\Verify;
  * The production root public keys this package trusts, embedded so that the trust anchor never has to be
  * fetched over a network the SDK is meant to distrust.
  *
- * FILLED IN AT RELEASE. The production root keys do not exist yet, so both slots are empty. With no roots,
- * a signed response fails with a ConfigurationError instead of passing; an unsigned one needs no root.
- * Until then, pass the `roots` option (test environments only).
+ * CURRENT holds the production root (root-prod, a P-256 key in Cloud KMS that never leaves its HSM); NEXT is
+ * empty until a rotation. To trust another environment's root instead, pass the `roots` option.
  *
  * Two slots make key rotation possible without a flag day:
  *  - current: the root the gateway signs certificates with today;
@@ -23,7 +22,16 @@ namespace Vaultody\Sdk\Verify;
  */
 final class EmbeddedRoots
 {
-    public const CURRENT = ['pem' => '', 'fingerprint' => ''];
+    // A single-quoted string across lines, so the PEM's line breaks are in it as written (the release guard
+    // reads this form).
+    public const CURRENT = [
+        'pem' => '-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1ikEmarTSQWW1eSFI1gjyXo3ctGp
+nY25exvYPRD0rNOwrpfTf+PvUIeVdZrydIpxK/A6Ck9jrIjG/Wg98JeMYA==
+-----END PUBLIC KEY-----
+',
+        'fingerprint' => '0194e94f295844b04dbdfb885338fb4242095e55479a01a03caafee3e36cdd76',
+    ];
 
     public const NEXT = ['pem' => '', 'fingerprint' => ''];
 }

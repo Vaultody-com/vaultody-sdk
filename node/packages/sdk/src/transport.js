@@ -19,7 +19,7 @@
 
 const crypto = require('node:crypto');
 
-const { signHmacV2Request, keypairRequestMessage, API_HEADERS } = require('@vaultody/verify/keys');
+const { signHmacV2Request, keypairRequestMessage, API_HEADERS } = require('@vaultody-com/verify/keys');
 const { decideRetry } = require('./retry');
 const { classifyTransportError } = require('./transportErrors');
 const {

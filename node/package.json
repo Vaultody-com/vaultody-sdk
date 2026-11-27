@@ -1,7 +1,7 @@
 {
   "name": "vaultody-sdk-node",
   "private": true,
-  "description": "The Node.js packages of the Vaultody SDK: @vaultody/verify (pure verification) and @vaultody/sdk.",
+  "description": "The Node.js packages of the Vaultody SDK: @vaultody-com/verify (pure verification) and @vaultody-com/sdk.",
   "workspaces": [
     "packages/verify",
     "packages/sdk"

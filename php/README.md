@@ -195,8 +195,9 @@ and the client's methods (found by reflection, `bin/surface.php`) against `contr
   Python. Security events have exactly the fields of `SecurityEvents::EVENTS`, the same in every language
   ([`../docs/vault-keys-file.md`](../docs/vault-keys-file.md)). A vault that gains an algorithm (`xpub_added`) or
   changes type (`type_changed`) is refused the same way, on purpose. A pin is never replaced automatically: after
-  you confirm the change out of band, re-pin the vault with `npx @vaultody/sdk vault-keys accept --vault-id <id> --yes`
-  (the Node command line, which edits the shared pin file; it shows the old and new fingerprints first) or
+  you confirm the change out of band, re-pin the vault with `npx @vaultody-com/sdk@next vault-keys accept --vault-id <id>` (the Node command
+  line, which edits the shared pin file: it shows the old and new fingerprints, and `--yes --expect type=…,ECDSA=…,EDDSA=…`
+  re-pins only when the API still shows exactly those) or
   `VaultKeys\Pins::replace()` on your store, which records why in the store's audit list.
 - **Takes pins from configuration** too: `pinnedVaultKeys`, a list of
   `['vaultId' => ..., 'type' => 'main'|'test', 'keys' => ['ECDSA' => $xpub, 'EDDSA' => null]]` for the client's
@@ -251,4 +252,5 @@ and signs its answers with the TEST-ONLY keys of the vectors. Each method's test
 request example and reads the documented answer and error examples of `contract/openapi.json`. Without
 composer, `src/autoload.php` stands in for composer's autoloader.
 
-Not published. Packagist will read a read-only mirror of this directory (`vaultody-sdk-php`).
+Packagist reads a read-only mirror of this directory (`vaultody-sdk-php`). Release candidate:
+`composer require "vaultody/sdk:^0.9@RC"`.

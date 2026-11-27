@@ -6,14 +6,23 @@ GitHub release ([docs/RELEASING.md](docs/RELEASING.md)).
 
 ## Unreleased
 
-- The SDKs for Node.js (`@vaultody/sdk`, `@vaultody/verify`), Python (`vaultody-sdk`, `vaultody-verify`) and
-  PHP (`vaultody/sdk`), for API version `2026-03-20`, under the Apache License 2.0. Not published yet.
-- The `vaultody keys` command line ships with `@vaultody/sdk` (`npx @vaultody/sdk keys ...`); `keys verify` asks
+## 0.9.0-rc.1
+
+The first release candidate. It embeds the production response-signing root (`0194e94f295844b04dbdfb885338fb4242095e55479a01a03caafee3e36cdd76`).
+Production does not sign responses yet, so a response without a signature is accepted (`when-present`) and vault
+pins are marked unverified (trust on first use). The first signed response latches its origin: from then on every
+response from it must be signed and verify against that root.
+
+- The SDKs for Node.js (`@vaultody-com/sdk`, `@vaultody-com/verify`), Python (`vaultody-sdk`, `vaultody-verify`) and
+  PHP (`vaultody/sdk`), for API version `2026-03-20`, under the Apache License 2.0.
+- `ConfigurationError` for a signed response with no root key to check it carries the code `no_root_keys` in
+  Node.js, Python and PHP (Python said `no_roots`, PHP had no code).
+- The `vaultody keys` command line ships with `@vaultody-com/sdk` (`npx @vaultody-com/sdk@next keys ...`); `keys verify` asks
   through the SDK's client.
 - Pins given in configuration (`pinnedVaultKeys`, Python `pinned_vault_keys`) count as verified and are checked
   against every vault list like any pin; PHP has the option too now.
 - A key added to a pinned vault, or a vault type change, stays refused until the client re-pins the vault:
-  `npx @vaultody/sdk vault-keys accept --vault-id <vaultId>` shows the old and new fingerprints, and
+  `npx @vaultody-com/sdk@next vault-keys accept --vault-id <vaultId>` shows the old and new fingerprints, and
   `--yes --expect type=…,ECDSA=…,EDDSA=…` re-pins only when the API still shows exactly those.
 - A client with response-signing roots (the `roots` option, or a stable release that embeds the root) refuses an
   unsigned response from its first call; `when-present` is then ignored with a warning. Any response that carries a

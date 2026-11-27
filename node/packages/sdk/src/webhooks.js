@@ -13,8 +13,8 @@
  * are taken whole, so a future signature header with a timestamp fits without a new signature here.
  */
 
-const { verifyWebhookSignature, WebhookSignatureError: VerifyWebhookError } = require('@vaultody/verify/webhook');
-const { ConfigurationError: VerifyConfigurationError } = require('@vaultody/verify/response');
+const { verifyWebhookSignature, WebhookSignatureError: VerifyWebhookError } = require('@vaultody-com/verify/webhook');
+const { ConfigurationError: VerifyConfigurationError } = require('@vaultody-com/verify/response');
 const { WebhookSignatureError, WebhookPayloadError, ConfigurationError } = require('./errors');
 
 /** The events the API documents; any other value of data.event is returned as it is, with known: false. */

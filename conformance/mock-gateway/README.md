@@ -1,6 +1,6 @@
 # Mock gateway
 
-An HTTP server on 127.0.0.1 that answers SDK requests the way the Vaultody API gateway does. Every language runs its pipeline tests against it in CI. It uses only `node:http` and `node:crypto`, and it is written apart from the SDKs and from `@vaultody/verify`, so it can't share their bugs.
+An HTTP server on 127.0.0.1 that answers SDK requests the way the Vaultody API gateway does. Every language runs its pipeline tests against it in CI. It uses only `node:http` and `node:crypto`, and it is written apart from the SDKs and from `@vaultody-com/verify`, so it can't share their bugs.
 
 | What it does | How |
 |---|---|

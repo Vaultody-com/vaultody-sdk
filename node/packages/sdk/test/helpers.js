@@ -100,6 +100,8 @@ async function setup({ key = null, signing = { root: 'current' }, roots = signin
             random: () => 0,
             trace: event => trace.push(event),
             ...(roots === 'embedded' ? { embeddedRoots: ROOTS, sdkVersion: RELEASE_CANDIDATE } : {}),
+            // 'none' plays a build that embeds no root, not this build's production root.
+            ...(roots === 'none' ? { embeddedRoots: [] } : {}),
             ...unsupported,
         },
     });

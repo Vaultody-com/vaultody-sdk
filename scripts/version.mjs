@@ -102,10 +102,10 @@ const line = (file, what, form, pattern) => ({
 export const PLACES = Object.freeze([
     json('node/packages/verify/package.json', ['version']),
     json('node/packages/sdk/package.json', ['version']),
-    json('node/packages/sdk/package.json', ['dependencies', '@vaultody/verify']),
+    json('node/packages/sdk/package.json', ['dependencies', '@vaultody-com/verify']),
     json('node/package-lock.json', ['packages', 'packages/verify', 'version']),
     json('node/package-lock.json', ['packages', 'packages/sdk', 'version']),
-    json('node/package-lock.json', ['packages', 'packages/sdk', 'dependencies', '@vaultody/verify']),
+    json('node/package-lock.json', ['packages', 'packages/sdk', 'dependencies', '@vaultody-com/verify']),
     line('python/vaultody-verify/pyproject.toml', 'version', 'pep440', /^(version = ")([^"]*)(")$/),
     line('python/vaultody-verify/vaultody_verify/__init__.py', '__version__', 'pep440', /^(__version__ = ")([^"]*)(")$/),
     line('python/vaultody-sdk/pyproject.toml', 'version', 'pep440', /^(version = ")([^"]*)(")$/),

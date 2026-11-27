@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import re
 import subprocess
 import sys
 
@@ -18,7 +19,8 @@ def test_pins_the_api_version_of_the_published_contract():
 
 
 def test_carries_the_one_version_number_of_the_repository():
-    version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+    # Python carries the PEP 440 form of VERSION: 0.9.0-rc.1 is 0.9.0rc1 (scripts/version.mjs).
+    version = re.sub(r"-rc\.(\d+)$", r"rc\1", (ROOT / "VERSION").read_text(encoding="utf-8").strip())
     assert vaultody_sdk.__version__ == version
     assert vaultody_verify.__version__ == version
 

@@ -197,7 +197,7 @@ describe('roots configured, and the latch on any signed answer', () => {
 
             gw.mitm = stripAll;
             await assert.rejects(call(client), rejectsWith('missing'));
-            const restarted = make(gw, clock, { vaultKeyStore: store });
+            const restarted = make(gw, clock, { vaultKeyStore: store, unsupported: { embeddedRoots: [] } });
             await assert.rejects(call(restarted), rejectsWith('missing'));
         });
     });

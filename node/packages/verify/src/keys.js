@@ -8,7 +8,7 @@
  * HMAC, so a leaked API secret alone can no longer sign requests. This module makes and reads those keys,
  * computes their fingerprint, signs the proof of possession asked for when a key is registered, signs API
  * requests, and reads the API's list of the keys an API key holds. It does no I/O on the network: the
- * `vaultody keys` command line of @vaultody/sdk is built on it, and `keys verify` asks the API through the
+ * `vaultody keys` command line of @vaultody-com/sdk is built on it, and `keys verify` asks the API through the
  * SDK's client.
  *
  * The wire formats are shared with the Vaultody API and its docs

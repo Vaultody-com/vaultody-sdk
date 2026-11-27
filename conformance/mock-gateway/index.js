@@ -4,7 +4,7 @@
  * A mock of the Vaultody API gateway for SDK tests and CI: an HTTP server on 127.0.0.1 that checks every
  * request the way the gateway does and answers with signed responses.
  *
- * It is written independently of the SDKs and of @vaultody/verify, from the wire formats in test-vectors/
+ * It is written independently of the SDKs and of @vaultody-com/verify, from the wire formats in test-vectors/
  * and the gateway's request-signing, replay-protection and response-signing code, so an SDK
  * bug can't be mirrored here. Only node:crypto and node:http; no dependency.
  *

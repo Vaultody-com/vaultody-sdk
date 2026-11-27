@@ -172,7 +172,7 @@ final class Roots
         if ($parsed === null) {
             $embedded = self::embedded();
             if ($embedded === []) {
-                throw new ConfigurationError('no root keys are configured: this build of vaultody/sdk has no embedded production roots yet, '
+                throw new ConfigurationError('no root keys are configured: this build of vaultody/sdk embeds no root, '
                     . 'so pass them in the `roots` option. Refusing to treat any response as verified.');
             }
 

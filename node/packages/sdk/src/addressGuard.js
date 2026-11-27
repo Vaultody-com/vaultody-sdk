@@ -2,7 +2,7 @@
 
 /**
  * Vault xpub pins and the address check, on top of the pin model (vaultKeys.js), a store (vaultKeyStore.js)
- * and @vaultody/verify's derivation.
+ * and @vaultody-com/verify's derivation.
  *
  * Pins come only from GET /vaults/{main|test} (listVaults). Every answer of it, the client's own calls
  * included, is compared with the pins first: a new vault is pinned (verified when the answer was signed,
@@ -24,7 +24,7 @@
  * the vaults of its type through the full pipeline, page by page.
  */
 
-const { checkAddress, networkOfVault, isKnownChain, AddressVerificationError: VerifyAddressError } = require('@vaultody/verify/address');
+const { checkAddress, networkOfVault, isKnownChain, AddressVerificationError: VerifyAddressError } = require('@vaultody-com/verify/address');
 const { AddressVerificationError, VaultKeyChangedError, VaultKeyStoreError } = require('./errors');
 const { readVaultList, observeVaults, addressPathRequired, addressCheckStatus, ADDRESS_CHECK_STATUS, OUTCOMES, ALGORITHMS } = require('./vaultKeys');
 

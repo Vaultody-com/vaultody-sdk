@@ -22,7 +22,7 @@ from .keys import (
 from .response import VerificationResult, verify_requests_response, verify_response
 from .webhook import WebhookSignatureError, WebhookVerification, verify_webhook_signature
 
-__version__ = "0.1.0"
+__version__ = "0.9.0rc1"
 
 __all__ = [
     "AddressCheckResult",

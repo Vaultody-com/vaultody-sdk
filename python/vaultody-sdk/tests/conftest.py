@@ -5,6 +5,7 @@ awaits AsyncVaultody, so every client test runs the same steps on both.
 """
 
 import asyncio
+import dataclasses
 
 import pytest
 
@@ -50,6 +51,9 @@ def make_client(kind, gateway=None, *, clock=None, store=None, hooks=None, crede
     if hooks is None:
         hooks = Hooks(clock=clock, sleep=clock.sleep, random=lambda: 0.5, nonce=Nonces())
     options.setdefault("roots", PINNED_ROOTS)
+    if options["roots"] is None and hooks.embedded_roots is None:
+        # roots=None plays a build that embeds no root, not this build's production root.
+        hooks = dataclasses.replace(hooks, embedded_roots=())
     options.setdefault("base_url", ORIGIN)
     options.setdefault("max_requests_per_second", 1000)
     if gateway is not None:
