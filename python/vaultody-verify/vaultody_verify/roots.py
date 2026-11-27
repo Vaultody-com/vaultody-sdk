@@ -23,13 +23,18 @@ from cryptography.hazmat.primitives.asymmetric import ec
 
 from .errors import ConfigurationError
 
-# Production roots: SubjectPublicKeyInfo PEM and fingerprint, filled in at release.
+# Production roots: SubjectPublicKeyInfo PEM and fingerprint.
 #
-# The production root keys don't exist yet, so these are deliberately empty. With no root embedded and
-# none passed as ``roots=``, every verification raises ConfigurationError instead of passing.
-# A PEM without its fingerprint, or one whose fingerprint doesn't match, stops the import.
-CURRENT_ROOT_PEM = ""
-CURRENT_ROOT_FINGERPRINT = ""
+# "current" is the production root (root-prod, a P-256 key in Cloud KMS that never leaves its HSM); "next"
+# stays empty until a rotation. A PEM without its fingerprint, or one whose fingerprint doesn't match,
+# stops the import. To trust another environment's root instead, pass ``roots=``.
+CURRENT_ROOT_PEM = """\
+-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1ikEmarTSQWW1eSFI1gjyXo3ctGp
+nY25exvYPRD0rNOwrpfTf+PvUIeVdZrydIpxK/A6Ck9jrIjG/Wg98JeMYA==
+-----END PUBLIC KEY-----
+"""
+CURRENT_ROOT_FINGERPRINT = "0194e94f295844b04dbdfb885338fb4242095e55479a01a03caafee3e36cdd76"
 
 NEXT_ROOT_PEM = ""
 NEXT_ROOT_FINGERPRINT = ""
@@ -144,8 +149,7 @@ def require_roots(parsed):
     roots = EMBEDDED_ROOTS if parsed is None else parsed
     if not roots:
         raise ConfigurationError(
-            "no response-signing roots are configured: this build embeds no production roots yet, "
-            "so pass the roots to trust with roots=[...]"
+            "no response-signing roots are configured: pass the roots to trust with roots=[...]"
         )
     return roots
 

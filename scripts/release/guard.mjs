@@ -50,7 +50,10 @@ export const SLOTS = Object.freeze(['current', 'next']);
  * material either (a test environment's root, say). The test-only roots of the vectors and tests are found
  * by scanning those files, so they need no entry here.
  */
-export const NON_PRODUCTION_ROOTS = Object.freeze([]);
+export const NON_PRODUCTION_ROOTS = Object.freeze([
+    // root-qa: the response-signing root of the QA environments (Cloud KMS, project vaultody-stage).
+    '7281c60fb779c1db8db76e8f297bf6a85a6701ebebf4aa4ad06dc213ea86934f',
+]);
 
 /** Where the test material lives: a root whose key or fingerprint appears here is a test root. */
 const TEST_MATERIAL = ['test-vectors', 'conformance', 'node/packages/verify/test', 'node/packages/sdk/test',

@@ -113,9 +113,10 @@ point or explicit curve parameters raise `ConfigurationError`:
 verify_requests_response(resp, roots=[QA_ROOT_PEM])
 ```
 
-**This build embeds no production roots yet.** They are filled in at release. Until then a signed
-response checked without `roots=` raises `ConfigurationError`, so a missing root can never let a signed
-response through unchecked. The roots are looked up only once a response carries a signature: in
+This build embeds the production root (fingerprint `0194e94f295844b04dbdfb885338fb4242095e55479a01a03caafee3e36cdd76`) as the current root; the
+next one is empty until a rotation. Without `roots=` a signed response is checked against it. A `roots=` that holds
+no key raises `ConfigurationError` on a signed response, so a missing root can never let a signed response
+through unchecked. The roots are looked up only once a response carries a signature: in
 non-strict mode a response with no signature headers at all still returns `verified=False`,
 `reason="missing"` without any root, and in strict mode it raises `ResponseSignatureError("missing")`.
 A malformed `roots=` value raises `ConfigurationError` at once, signed response or not.

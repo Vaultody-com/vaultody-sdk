@@ -28,6 +28,8 @@ function freshRoot() {
 }
 
 const EMPTY = { pem: '', fingerprint: '' };
+/** root-prod, the production response-signing root the repository embeds as current */
+const PRODUCTION_ROOT_FINGERPRINT = '0194e94f295844b04dbdfb885338fb4242095e55479a01a03caafee3e36cdd76';
 const same = (current, next = EMPTY) => ({ node: { current, next }, python: { current, next }, php: { current, next } });
 const testMaterial = readTestMaterial();
 
@@ -43,36 +45,40 @@ function copyOf(files) {
 }
 
 describe('scripts/release/guard.mjs: roots', () => {
-    it('reads the repository\'s roots in all three languages: every slot empty today', () => {
+    it('reads the repository\'s roots in all three languages: the production root as current, next empty', () => {
         const roots = readEmbeddedRoots();
-        assert.deepEqual(roots, same(EMPTY));
-        assert.deepEqual(checkRoots(roots, { testMaterial }), { problems: [], slots: { current: null, next: null } });
+        assert.equal(roots.node.current.fingerprint, PRODUCTION_ROOT_FINGERPRINT);
+        assert.deepEqual(roots, same(roots.node.current));
+        const result = checkRoots(roots, { testMaterial });
+        assert.deepEqual(result.problems, []);
+        assert.equal(result.slots.current.fingerprint, PRODUCTION_ROOT_FINGERPRINT);
+        assert.equal(result.slots.next, null);
     });
 
-    it('reads a root written the way a release fills it in, in each language\'s own file', () => {
+    it('reads a root written the way a release fills it in, in each language\'s own file (the next root of a rotation)', () => {
         const dir = copyOf(['node/packages/verify/src/roots.js', 'python/vaultody-verify/vaultody_verify/roots.py', 'php/src/Verify/EmbeddedRoots.php']);
         try {
             const root = freshRoot();
             const node = path.join(dir, 'node/packages/verify/src/roots.js');
-            writeFileSync(node, readFileSync(node, 'utf8').replace(/current: Object\.freeze\(\{\s*pem: '',\s*fingerprint: '',/,
-                `current: Object.freeze({\n        pem: ${JSON.stringify(root.pem)},\n        fingerprint: '${root.fingerprint}',`));
+            writeFileSync(node, readFileSync(node, 'utf8').replace(/next: Object\.freeze\(\{\s*pem: '',\s*fingerprint: '',/,
+                `next: Object.freeze({\n        pem: ${JSON.stringify(root.pem)},\n        fingerprint: '${root.fingerprint}',`));
             const python = path.join(dir, 'python/vaultody-verify/vaultody_verify/roots.py');
             writeFileSync(python, readFileSync(python, 'utf8')
-                .replace('CURRENT_ROOT_PEM = ""', `CURRENT_ROOT_PEM = """\\\n${root.pem}"""`)
-                .replace('CURRENT_ROOT_FINGERPRINT = ""', `CURRENT_ROOT_FINGERPRINT = "${root.fingerprint}"`));
+                .replace('NEXT_ROOT_PEM = ""', `NEXT_ROOT_PEM = """\\\n${root.pem}"""`)
+                .replace('NEXT_ROOT_FINGERPRINT = ""', `NEXT_ROOT_FINGERPRINT = "${root.fingerprint}"`));
             const php = path.join(dir, 'php/src/Verify/EmbeddedRoots.php');
-            writeFileSync(php, readFileSync(php, 'utf8').replace("public const CURRENT = ['pem' => '', 'fingerprint' => ''];",
-                `public const CURRENT = [\n        'pem' => '${root.pem}',\n        'fingerprint' => '${root.fingerprint}',\n    ];`));
+            writeFileSync(php, readFileSync(php, 'utf8').replace("public const NEXT = ['pem' => '', 'fingerprint' => ''];",
+                `public const NEXT = [\n        'pem' => '${root.pem}',\n        'fingerprint' => '${root.fingerprint}',\n    ];`));
 
             const roots = readEmbeddedRoots(dir);
             for (const language of ['node', 'python', 'php']) {
-                assert.equal(roots[language].current.pem.trim(), root.pem.trim(), language);
-                assert.equal(roots[language].current.fingerprint, root.fingerprint, language);
+                assert.equal(roots[language].next.pem.trim(), root.pem.trim(), language);
+                assert.equal(roots[language].next.fingerprint, root.fingerprint, language);
             }
             const result = checkRoots(roots, { testMaterial });
             assert.deepEqual(result.problems, []);
-            assert.equal(result.slots.current.fingerprint, root.fingerprint);
-            assert.equal(result.slots.next, null);
+            assert.equal(result.slots.current.fingerprint, PRODUCTION_ROOT_FINGERPRINT);
+            assert.equal(result.slots.next.fingerprint, root.fingerprint);
         } finally {
             rmSync(dir, { recursive: true, force: true });
         }

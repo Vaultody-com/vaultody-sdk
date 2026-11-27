@@ -813,9 +813,9 @@ $tests['transport: a store that does not keep the pin just written is store_conf
 };
 
 $tests['transport: no roots and a signing gateway: ConfigurationError, and the origin latches with rootId null, so a stripped signature is refused from then on'] = static function () use ($client, $make, $gateway, $read, $ok, $recordEvents, &$events, $candidate): void {
-    // A release candidate once production signs: it has no root to check a signature with (this build embeds none).
+    // A release candidate without an embedded root once production signs: it has no root to check a signature with.
     $store = new MemoryVaultKeyStore();
-    $transport = $client($candidate + ['vaultKeyStore' => $store, 'onSecurityEvent' => $recordEvents()]);
+    $transport = $client($candidate + ['embeddedRoots' => [], 'vaultKeyStore' => $store, 'onSecurityEvent' => $recordEvents()]);
     $params = ['vaultId' => 'v1', 'vaultAccountId' => 'a1'];
     $unsigned = ['status' => 200, 'body' => ['item' => ['n' => 1]], 'sign' => 'no'];
     $gateway->script([$ok(), $unsigned, $unsigned]);
